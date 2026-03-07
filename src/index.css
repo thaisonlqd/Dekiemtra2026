@@ -1,0 +1,35 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@layer utilities {
+  .print-break-inside-avoid {
+    break-inside: avoid;
+  }
+}
+
+@media print {
+  @page {
+    margin: 2cm;
+  }
+  
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Hide non-printable elements */
+  header, form, button, .no-print {
+    display: none !important;
+  }
+
+  /* Expand result to full width */
+  .prose {
+    max-width: 100% !important;
+  }
+  
+  /* Reset heights/overflows for printing */
+  .overflow-auto, .max-h-[800px] {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+}
