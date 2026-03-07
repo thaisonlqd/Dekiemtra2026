@@ -127,6 +127,12 @@ export async function generateStep1Matrix(data: InputData, selectedLessonIds: Se
     
     Ghi chú thêm: ${data.additionalNotes}
     
+    ${data.sourceMaterials && data.sourceMaterials.length > 0 ? `
+    NGUỒN DỮ LIỆU THAM KHẢO:
+    Sử dụng nội dung từ các tài liệu sau đây để phân bổ nội dung kiến thức cho phù hợp.
+    ${data.sourceMaterials.map(m => `--- Bắt đầu nội dung file: ${m.fileName} ---\n${m.content}\n--- Kết thúc nội dung file: ${m.fileName} ---`).join('\n\n')}
+    ` : ''}
+    
     YÊU CẦU:
     - Tạo bảng Ma trận đề thi dạng HTML Table.
     - BẮT BUỘC chèn đoạn Header sau vào ĐẦU output (trước thẻ table):
@@ -204,6 +210,12 @@ export async function generateStep2Specs(matrixHtml: string, data: InputData, se
     - Xác định Mức độ kiểm tra (Nhận biết, Thông hiểu, Vận dụng).
     - Số câu hỏi cho từng mức độ.
     
+    ${data.sourceMaterials && data.sourceMaterials.length > 0 ? `
+    NGUỒN DỮ LIỆU THAM KHẢO:
+    Sử dụng nội dung từ các tài liệu sau đây để xây dựng yêu cầu cần đạt cho phù hợp.
+    ${data.sourceMaterials.map(m => `--- Bắt đầu nội dung file: ${m.fileName} ---\n${m.content}\n--- Kết thúc nội dung file: ${m.fileName} ---`).join('\n\n')}
+    ` : ''}
+    
     YÊU CẦU:
     - Output dạng HTML Table.
     - BẮT BUỘC chèn đoạn Header sau vào ĐẦU output (trước thẻ table):
@@ -251,6 +263,16 @@ export async function generateStep3Exam(specsHtml: string, data: InputData): Pro
     - Sử dụng font 'Times New Roman'.
     - KHÔNG sử dụng thẻ <table> cho bố cục Header (để tránh lỗi hiển thị border). Sử dụng Flexbox.
     - TUYỆT ĐỐI KHÔNG sinh ra câu ghi chú kiểu như: "Lưu ý: Đề thi gồm 3 phần... Học sinh làm bài trực tiếp vào đề thi." ở đầu đề thi.
+    
+    ${data.sourceMaterials && data.sourceMaterials.length > 0 ? `
+    NGUỒN DỮ LIỆU BIÊN SOẠN ĐỀ (BẮT BUỘC TUÂN THỦ):
+    Bạn PHẢI sử dụng nội dung từ các tài liệu sau đây để tạo câu hỏi.
+    TUYỆT ĐỐI KHÔNG được suy diễn kiến thức ngoài.
+    CẤM TUYỆT ĐỐI lấy tài liệu, số liệu, hay thông tin từ bên ngoài nguồn dữ liệu này.
+    Tất cả các câu hỏi phải được trích xuất và xây dựng dựa trên thông tin có trong các tài liệu dưới đây:
+    
+    ${data.sourceMaterials.map(m => `--- Bắt đầu nội dung file: ${m.fileName} ---\n${m.content}\n--- Kết thúc nội dung file: ${m.fileName} ---`).join('\n\n')}
+    ` : ''}
     
     CẤU TRÚC ĐỀ THI (HTML MẪU):
     
@@ -375,6 +397,39 @@ export async function generateStep3Exam(specsHtml: string, data: InputData): Pro
 }
 
 // --- File Processing ---
+
+export async function extractTextFromFile(file: File): Promise<string> {
+  const ai = getAIClient();
+  
+  if (file.name.endsWith('.docx')) {
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    return result.value;
+  } else if (file.type === 'application/pdf') {
+    const base64 = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        resolve(result.split(',')[1]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: {
+        parts: [
+          { inlineData: { mimeType: 'application/pdf', data: base64 } },
+          { text: "Extract all text from this document. Return only the text content without any formatting or markdown." }
+        ]
+      }
+    });
+    return response.text || "";
+  } else {
+    // Assume text file
+    return await file.text();
+  }
+}
 
 export async function extractInfoFromDocument(file: File): Promise<Partial<InputData>> {
   const ai = getAIClient();

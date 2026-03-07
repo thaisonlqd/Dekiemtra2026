@@ -36,6 +36,11 @@ export interface QuestionConfig {
   essay: LevelConfig;
 }
 
+export interface SourceMaterial {
+  fileName: string;
+  content: string;
+}
+
 export interface InputData {
   educationLevel: string; // 'TieuHoc' | 'THCS' | 'THPT'
   subject: string;
@@ -61,6 +66,7 @@ export interface InputData {
     essay: boolean;
   };
   questionConfig: QuestionConfig;
+  sourceMaterials: SourceMaterial[];
 }
 
 export interface GenerationState {

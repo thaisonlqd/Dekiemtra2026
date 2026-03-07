@@ -3,8 +3,8 @@ import { AppStep, InputData, GenerationState, Lesson, Chapter, QuestionConfig, L
 import StepIndicator from './components/StepIndicator';
 import Button from './components/Button';
 import MarkdownView from './components/MarkdownView';
-import { generateStep1Matrix, generateStep2Specs, generateStep3Exam, extractInfoFromDocument, convertMatrixFileToHtml, getApiKey, setApiKey as saveApiKey } from './services/geminiService';
-import { ArrowRight, RotateCcw, FileText, Download, AlertCircle, Upload, Clock, Check, ChevronDown, ChevronRight, Filter, FileUp, Settings, Key, ExternalLink, FileSignature, ShieldCheck } from 'lucide-react';
+import { generateStep1Matrix, generateStep2Specs, generateStep3Exam, extractInfoFromDocument, convertMatrixFileToHtml, getApiKey, setApiKey as saveApiKey, extractTextFromFile } from './services/geminiService';
+import { ArrowRight, RotateCcw, FileText, Download, AlertCircle, Upload, Clock, Check, ChevronDown, ChevronRight, Filter, FileUp, Settings, Key, ExternalLink, FileSignature, ShieldCheck, X } from 'lucide-react';
 import { ThemeContext } from './ThemeContext';
 
 import { EDUCATION_LEVELS, GRADES, SUBJECTS, MODELS, DEFAULT_MODEL } from './constants';
@@ -57,7 +57,8 @@ const App: React.FC = () => {
       },
       type3: { biet: 1, hieu: 1, van_dung: 2 },
       essay: { biet: 0, hieu: 1, van_dung: 2 },
-    }
+    },
+    sourceMaterials: []
   });
 
   // -- UI State --
@@ -77,6 +78,8 @@ const App: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const matrixUploadRef = useRef<HTMLInputElement>(null); // Ref for Step 2 upload
   const matrixDirectUploadRef = useRef<HTMLInputElement>(null); // Ref for Step 1 direct upload
+  const sourceMaterialInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingSource, setIsUploadingSource] = useState(false);
 
   // -- API Key State --
   const [apiKey, setApiKeyState] = useState<string>(getApiKey() || '');
@@ -209,6 +212,41 @@ const App: React.FC = () => {
     }
 
     if (matrixDirectUploadRef.current) matrixDirectUploadRef.current.value = '';
+  };
+
+  const handleSourceMaterialUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    setIsUploadingSource(true);
+    setGenState(prev => ({ ...prev, error: null }));
+
+    try {
+      const newMaterials = [];
+      for (const file of files) {
+        const content = await extractTextFromFile(file);
+        if (content) {
+          newMaterials.push({ fileName: file.name, content });
+        }
+      }
+
+      setInputData(prev => ({
+        ...prev,
+        sourceMaterials: [...prev.sourceMaterials, ...newMaterials]
+      }));
+    } catch (err: any) {
+      setGenState(prev => ({ ...prev, error: `Lỗi đọc file nguồn: ${err.message}` }));
+    } finally {
+      setIsUploadingSource(false);
+      if (sourceMaterialInputRef.current) sourceMaterialInputRef.current.value = '';
+    }
+  };
+
+  const removeSourceMaterial = (index: number) => {
+    setInputData(prev => ({
+      ...prev,
+      sourceMaterials: prev.sourceMaterials.filter((_, i) => i !== index)
+    }));
   };
 
   // -- Topic Selection Logic --
@@ -979,6 +1017,61 @@ const App: React.FC = () => {
             )}
           </div>
 
+          {/* 4. Source Materials */}
+          <div className={themeClasses.card}>
+            <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+              <span className={`w-6 h-6 flex items-center justify-center text-xs font-bold ${themeClasses.badge}`}>4</span>
+              Nguồn dữ liệu biên soạn đề
+            </h2>
+            <div className="bg-white p-4 rounded-lg border border-slate-200">
+              <p className="text-sm text-black mb-4">
+                Tải lên các tài liệu (PDF, DOCX, TXT) chứa nội dung kiến thức để làm cơ sở tạo câu hỏi. Hệ thống sẽ <strong>chỉ lấy dữ liệu từ các file này</strong> để sinh đề thi, tuyệt đối không suy diễn hay lấy từ nguồn bên ngoài.
+              </p>
+              
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-4">
+                  <input 
+                    type="file" 
+                    ref={sourceMaterialInputRef} 
+                    onChange={handleSourceMaterialUpload} 
+                    accept=".pdf,.docx,.txt" 
+                    multiple 
+                    className="hidden" 
+                    id="source-upload" 
+                    disabled={isUploadingSource} 
+                  />
+                  <label htmlFor="source-upload" className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-sky-100 text-sky-700 font-bold rounded-lg border border-sky-300 hover:bg-sky-200 transition-colors">
+                    {isUploadingSource ? <Clock className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+                    Tải lên tài liệu
+                  </label>
+                </div>
+
+                {inputData.sourceMaterials.length > 0 && (
+                  <div className="mt-2 space-y-2">
+                    <h3 className="text-sm font-bold text-black">Tài liệu đã tải lên ({inputData.sourceMaterials.length}):</h3>
+                    <ul className="space-y-2">
+                      {inputData.sourceMaterials.map((mat, idx) => (
+                        <li key={idx} className="flex items-center justify-between p-2 bg-slate-50 border border-slate-200 rounded-md">
+                          <div className="flex items-center gap-2 overflow-hidden">
+                            <FileText className="w-4 h-4 text-sky-600 shrink-0" />
+                            <span className="text-sm font-medium truncate">{mat.fileName}</span>
+                          </div>
+                          <button 
+                            onClick={() => removeSourceMaterial(idx)}
+                            className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors shrink-0"
+                            title="Xóa tài liệu này"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
           <div className="pt-6 flex justify-end">
             <Button
               onClick={handleGenerateMatrix}
@@ -1073,27 +1166,6 @@ const App: React.FC = () => {
           {title}
         </h2>
         <div className="flex gap-3">
-          {/* Upload Matrix Button - Only for Matrix Step */}
-          {currentStep === AppStep.MATRIX && (
-            <>
-              <input
-                type="file"
-                ref={matrixUploadRef}
-                onChange={handleMatrixUpload}
-                className="hidden"
-                accept=".html,.txt,.pdf,.docx,.doc"
-              />
-              <Button
-                variant="secondary"
-                onClick={() => matrixUploadRef.current?.click()}
-                icon={<Upload className="w-4 h-4" />}
-                isLoading={genState.isLoading}
-              >
-                Upload Ma trận
-              </Button>
-            </>
-          )}
-
           <Button variant="secondary" onClick={() => handleDownloadWord(content, title)} icon={<FileText className="w-4 h-4" />}>
             Tải Word (.doc)
           </Button>
@@ -1173,7 +1245,8 @@ const App: React.FC = () => {
           },
           type3: { biet: 1, hieu: 1, van_dung: 2 },
           essay: { biet: 0, hieu: 1, van_dung: 2 },
-        }
+        },
+        sourceMaterials: []
       });
       setUploadedFileName(null);
       setCurrentStep(AppStep.INPUT);
