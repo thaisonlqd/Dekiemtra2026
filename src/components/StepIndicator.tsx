@@ -1,4 +1,4 @@
-import { Check } from 'lucide-react';
+import { Check, Settings2, Grid3X3, FileText, FileQuestion } from 'lucide-react';
 import { AppStep } from '../types';
 import { cn } from '../lib/utils';
 import { useTheme } from '../ThemeContext';
@@ -13,10 +13,10 @@ export default function StepIndicator({ currentStep, setStep, completedSteps }: 
   const theme = useTheme();
   
   const steps = [
-    { id: AppStep.INPUT, label: 'Cấu hình' },
-    { id: AppStep.MATRIX, label: 'Ma trận' },
-    { id: AppStep.SPECS, label: 'Đặc tả' },
-    { id: AppStep.EXAM, label: 'Đề thi' },
+    { id: AppStep.INPUT, label: 'Cấu hình', icon: Settings2 },
+    { id: AppStep.MATRIX, label: 'Ma trận', icon: Grid3X3 },
+    { id: AppStep.SPECS, label: 'Đặc tả', icon: FileText },
+    { id: AppStep.EXAM, label: 'Đề thi', icon: FileQuestion },
   ];
 
   return (
@@ -31,6 +31,7 @@ export default function StepIndicator({ currentStep, setStep, completedSteps }: 
           const isCompleted = completedSteps > index;
           const isCurrent = currentStep === step.id;
           const isClickable = completedSteps >= index;
+          const Icon = step.icon;
 
           return (
             <button
@@ -43,17 +44,17 @@ export default function StepIndicator({ currentStep, setStep, completedSteps }: 
               )}
             >
               <div className={cn(
-                "w-8 h-8 flex items-center justify-center border-2 transition-colors",
+                "w-10 h-10 flex items-center justify-center border-2 transition-colors",
                 theme === 'classic' ? "rounded-none border-black" : "rounded-full",
                 isCompleted || isCurrent 
-                  ? (theme === 'classic' ? "bg-black text-white" : "bg-indigo-600 border-indigo-600 text-white")
-                  : (theme === 'classic' ? "bg-white text-black" : "bg-white border-gray-300 text-gray-400")
+                  ? (theme === 'classic' ? "bg-sky-100 text-black border-black" : "bg-sky-100 border-sky-300 text-black shadow-sm")
+                  : (theme === 'classic' ? "bg-white text-black border-black" : "bg-white border-gray-300 text-gray-400")
               )}>
-                {isCompleted ? <Check className="w-4 h-4" /> : <span>{index + 1}</span>}
+                {isCompleted ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
               </div>
               <span className={cn(
                 "text-xs font-medium",
-                isCurrent ? (theme === 'classic' ? "text-black font-bold" : "text-indigo-600") : "text-gray-500"
+                isCurrent ? (theme === 'classic' ? "text-black font-bold" : "text-black font-bold") : "text-black"
               )}>
                 {step.label}
               </span>

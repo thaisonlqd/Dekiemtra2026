@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+@theme {
+  --color-primary: var(--color-red-600);
+}
+
+body {
+  @apply bg-white text-black;
+}
+
 @layer utilities {
   .print-break-inside-avoid {
     break-inside: avoid;
@@ -25,6 +33,7 @@
   /* Expand result to full width */
   .prose {
     max-width: 100% !important;
+    @apply text-black;
   }
   
   /* Reset heights/overflows for printing */

@@ -55,7 +55,7 @@ export function ExamForm({ onSubmit, isLoading }: ExamFormProps) {
       animate={{ opacity: 1, y: 0 }}
       className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden"
     >
-      <div className="p-6 border-b border-gray-100 bg-gray-50/50">
+      <div className="p-6 border-b border-gray-100 bg-white">
         <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-indigo-600" />
           Cấu hình đề thi
@@ -104,7 +104,7 @@ export function ExamForm({ onSubmit, isLoading }: ExamFormProps) {
           />
         </div>
 
-        <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+        <div className="bg-white rounded-xl p-4 border border-gray-200">
           <h3 className="text-sm font-semibold text-gray-900 mb-4">Cấu trúc đề thi</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="space-y-1">
@@ -164,10 +164,10 @@ export function ExamForm({ onSubmit, isLoading }: ExamFormProps) {
           type="submit"
           disabled={isLoading}
           className={cn(
-            "w-full py-3 px-4 rounded-xl text-white font-semibold text-lg shadow-lg shadow-indigo-500/30 transition-all transform active:scale-[0.98]",
+            "w-full py-3 px-4 rounded-xl text-black font-bold text-lg shadow-lg shadow-sky-100 transition-all transform active:scale-[0.98] border border-sky-300",
             isLoading 
-              ? "bg-indigo-400 cursor-not-allowed" 
-              : "bg-indigo-600 hover:bg-indigo-700 hover:shadow-indigo-500/40"
+              ? "bg-sky-50 cursor-not-allowed" 
+              : "bg-sky-100 hover:bg-sky-200"
           )}
         >
           {isLoading ? (

@@ -30,25 +30,25 @@ export function ExamResult({ content }: ExamResultProps) {
       animate={{ opacity: 1, y: 0 }}
       className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-full"
     >
-      <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between sticky top-0 z-10 backdrop-blur-sm bg-opacity-90">
+      <div className="p-4 border-b border-gray-100 bg-white flex items-center justify-between sticky top-0 z-10 backdrop-blur-sm bg-opacity-90">
         <h2 className="text-lg font-semibold text-gray-900">Kết quả</h2>
         <div className="flex items-center gap-2">
           <button 
             onClick={handleCopy}
-            className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+            className="p-2 text-gray-600 hover:text-black hover:bg-sky-100 rounded-lg transition-colors"
             title="Sao chép Markdown"
           >
             {copied ? <Check className="w-5 h-5 text-green-600" /> : <Copy className="w-5 h-5" />}
           </button>
           <button 
             onClick={handlePrint}
-            className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+            className="p-2 text-gray-600 hover:text-black hover:bg-sky-100 rounded-lg transition-colors"
             title="In đề thi"
           >
             <Printer className="w-5 h-5" />
           </button>
           <button 
-            className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+            className="p-2 text-gray-600 hover:text-black hover:bg-sky-100 rounded-lg transition-colors"
             title="Tải xuống (Coming soon)"
           >
             <Download className="w-5 h-5" />
@@ -66,7 +66,7 @@ export function ExamResult({ content }: ExamResultProps) {
                 <table className="min-w-full border-collapse border border-gray-300 text-sm" {...props} />
               </div>
             ),
-            thead: ({node, ...props}) => <thead className="bg-gray-100" {...props} />,
+            thead: ({node, ...props}) => <thead className="bg-white border-b-2 border-gray-300" {...props} />,
             th: ({node, ...props}) => <th className="border border-gray-300 px-4 py-2 font-semibold text-left" {...props} />,
             td: ({node, ...props}) => <td className="border border-gray-300 px-4 py-2" {...props} />,
           }}

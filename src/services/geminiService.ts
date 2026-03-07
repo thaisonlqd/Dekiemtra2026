@@ -35,7 +35,7 @@ function calculateTnlRatio(data: InputData) {
 
 function getHeaderTemplate(data: InputData, title: string) {
   const { tnPercent, tlPercent } = calculateTnlRatio(data);
-  const schoolYear = "2025 - 2026"; // Placeholder or derive
+  const schoolYear = "2024 - 2025"; // Placeholder or derive
 
   return `
   <div style="display: flex; justify-content: space-between; margin-bottom: 20px; font-family: 'Times New Roman', serif; color: #000;">
