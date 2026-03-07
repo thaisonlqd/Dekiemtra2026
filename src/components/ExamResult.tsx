@@ -67,8 +67,8 @@ export function ExamResult({ content }: ExamResultProps) {
               </div>
             ),
             thead: ({node, ...props}) => <thead className="bg-white border-b-2 border-gray-300" {...props} />,
-            th: ({node, ...props}) => <th className="border border-gray-300 px-4 py-2 font-semibold text-left" {...props} />,
-            td: ({node, ...props}) => <td className="border border-gray-300 px-4 py-2" {...props} />,
+            th: ({node, ...props}) => <th className="border border-gray-300 px-4 py-2 font-semibold text-center align-middle" {...props} />,
+            td: ({node, ...props}) => <td className="border border-gray-300 px-4 py-2 text-center align-middle" {...props} />,
           }}
         >
           {content}

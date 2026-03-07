@@ -35,7 +35,7 @@ function calculateTnlRatio(data: InputData) {
 
 function getHeaderTemplate(data: InputData, title: string) {
   const { tnPercent, tlPercent } = calculateTnlRatio(data);
-  const schoolYear = "2024 - 2025"; // Placeholder or derive
+  const schoolYear = "2025 - 2026"; // Placeholder or derive
 
   return `
   <div style="display: flex; justify-content: space-between; margin-bottom: 20px; font-family: 'Times New Roman', serif; color: #000;">
@@ -77,39 +77,33 @@ export async function generateStep1Matrix(data: InputData, selectedLessonIds: Se
   const hasType3 = enabledTypes.type3;
   const hasEssay = enabledTypes.essay;
 
-  let tnkqCols = 0;
-  if (hasType1) tnkqCols += 3;
-  if (hasType2) tnkqCols += 3;
-  if (hasType3) tnkqCols += 3;
+  const numTypes = (hasType1 ? 1 : 0) + (hasType2 ? 1 : 0) + (hasType3 ? 1 : 0) + (hasEssay ? 1 : 0);
+  let typeHeaders = '';
+  if (hasType1) typeHeaders += '<th>Phần I</th>';
+  if (hasType2) typeHeaders += '<th>Phần II</th>';
+  if (hasType3) typeHeaders += '<th>Phần III</th>';
+  if (hasEssay) typeHeaders += '<th>Tự luận</th>';
 
-  const totalLevelCols = tnkqCols + (hasEssay ? 3 : 0);
   const fullHeader = getHeaderTemplate(data, "MA TRẬN ĐỀ");
 
   const headerHtml = `
   <thead>
     <tr>
-      <th rowspan="4">TT</th>
-      <th rowspan="4">Chủ đề/Chương</th>
-      <th rowspan="4">Nội dung/đơn vị kiến thức</th>
-      <th colspan="${totalLevelCols}">Mức độ đánh giá</th>
-      <th colspan="3" rowspan="3">Tổng</th>
-      <th rowspan="4">Tỉ lệ %<br>điểm</th>
+      <th rowspan="2">TT</th>
+      <th rowspan="2">Chủ đề/Chương</th>
+      <th rowspan="2">Nội dung/đơn vị kiến thức</th>
+      <th colspan="${numTypes}">Nhận biết</th>
+      <th colspan="${numTypes}">Thông hiểu</th>
+      <th colspan="${numTypes}">Vận dụng</th>
+      <th colspan="2">Tổng số câu</th>
+      <th rowspan="2">Tỉ lệ %<br>điểm</th>
     </tr>
     <tr>
-      <th colspan="${tnkqCols}">TNKQ</th>
-      ${hasEssay ? '<th colspan="3" rowspan="2">Tự luận</th>' : ''}
-    </tr>
-    <tr>
-      ${hasType1 ? '<th colspan="3"><em>Nhiều lựa chọn</em></th>' : ''}
-      ${hasType2 ? '<th colspan="3"><em>“Đúng – Sai”</em></th>' : ''}
-      ${hasType3 ? '<th colspan="3"><em>Trả lời ngắn</em></th>' : ''}
-    </tr>
-    <tr>
-      ${hasType1 ? '<th>Biết</th><th>Hiểu</th><th>Vận dụng</th>' : ''}
-      ${hasType2 ? '<th>Biết</th><th>Hiểu</th><th>Vận dụng</th>' : ''}
-      ${hasType3 ? '<th>Biết</th><th>Hiểu</th><th>Vận dụng</th>' : ''}
-      ${hasEssay ? '<th>Biết</th><th>Hiểu</th><th>Vận dụng</th>' : ''}
-      <th>Biết</th><th>Hiểu</th><th>Vận dụng</th>
+      ${typeHeaders}
+      ${typeHeaders}
+      ${typeHeaders}
+      <th>TNKQ</th>
+      <th>TL</th>
     </tr>
   </thead>`;
 
@@ -172,37 +166,30 @@ export async function generateStep2Specs(matrixHtml: string, data: InputData, se
   const hasType3 = enabledTypes.type3;
   const hasEssay = enabledTypes.essay;
 
-  let tnkqCols = 0;
-  if (hasType1) tnkqCols += 3;
-  if (hasType2) tnkqCols += 3;
-  if (hasType3) tnkqCols += 3;
+  const numTypes = (hasType1 ? 1 : 0) + (hasType2 ? 1 : 0) + (hasType3 ? 1 : 0) + (hasEssay ? 1 : 0);
+  let typeHeaders = '';
+  if (hasType1) typeHeaders += '<th>Phần I</th>';
+  if (hasType2) typeHeaders += '<th>Phần II</th>';
+  if (hasType3) typeHeaders += '<th>Phần III</th>';
+  if (hasEssay) typeHeaders += '<th>Tự luận</th>';
 
-  const totalLevelCols = tnkqCols + (hasEssay ? 3 : 0);
   const fullHeader = getHeaderTemplate(data, "BẢN ĐẶC TẢ KỸ THUẬT ĐỀ");
 
   const headerHtml = `
   <thead>
     <tr>
-      <th rowspan="4">TT</th>
-      <th rowspan="4">Chủ đề/Chương</th>
-      <th rowspan="4">Nội dung/đơn vị kiến thức</th>
-      <th rowspan="4">Yêu cầu cần đạt</th>
-      <th colspan="${totalLevelCols}">Số câu hỏi ở các mức độ đánh giá</th>
+      <th rowspan="2">TT</th>
+      <th rowspan="2">Chủ đề/Chương</th>
+      <th rowspan="2">Nội dung/đơn vị kiến thức</th>
+      <th rowspan="2">Yêu cầu cần đạt</th>
+      <th colspan="${numTypes}">Nhận biết</th>
+      <th colspan="${numTypes}">Thông hiểu</th>
+      <th colspan="${numTypes}">Vận dụng</th>
     </tr>
     <tr>
-      <th colspan="${tnkqCols}">TNKQ</th>
-      ${hasEssay ? '<th colspan="3" rowspan="2">Tự luận</th>' : ''}
-    </tr>
-    <tr>
-      ${hasType1 ? '<th colspan="3">Nhiều lựa chọn</th>' : ''}
-      ${hasType2 ? '<th colspan="3">"Đúng - Sai"</th>' : ''}
-      ${hasType3 ? '<th colspan="3">Trả lời ngắn</th>' : ''}
-    </tr>
-    <tr>
-      ${hasType1 ? '<th>Biết</th><th>Hiểu</th><th>Vận dụng</th>' : ''}
-      ${hasType2 ? '<th>Biết</th><th>Hiểu</th><th>Vận dụng</th>' : ''}
-      ${hasType3 ? '<th>Biết</th><th>Hiểu</th><th>Vận dụng</th>' : ''}
-      ${hasEssay ? '<th>Biết</th><th>Hiểu</th><th>Vận dụng</th>' : ''}
+      ${typeHeaders}
+      ${typeHeaders}
+      ${typeHeaders}
     </tr>
   </thead>`;
   
@@ -263,6 +250,7 @@ export async function generateStep3Exam(specsHtml: string, data: InputData): Pro
     - Output là mã HTML thuần (không bọc trong \`\`\`html).
     - Sử dụng font 'Times New Roman'.
     - KHÔNG sử dụng thẻ <table> cho bố cục Header (để tránh lỗi hiển thị border). Sử dụng Flexbox.
+    - TUYỆT ĐỐI KHÔNG sinh ra câu ghi chú kiểu như: "Lưu ý: Đề thi gồm 3 phần... Học sinh làm bài trực tiếp vào đề thi." ở đầu đề thi.
     
     CẤU TRÚC ĐỀ THI (HTML MẪU):
     
@@ -275,7 +263,7 @@ export async function generateStep3Exam(specsHtml: string, data: InputData): Pro
             </div>
             <div style="width: 60%; text-align: center;">
                 <div style="font-weight: bold; text-transform: uppercase;">ĐỀ KIỂM TRA ${data.examType.toUpperCase()}</div>
-                <div style="font-weight: bold;">NĂM HỌC 20... - 20...</div>
+                <div style="font-weight: bold;">NĂM HỌC 2025 - 2026</div>
                 <div style="font-weight: bold; text-transform: uppercase;">MÔN: ${data.subject.toUpperCase()} – LỚP: ${data.grade}</div>
             </div>
         </div>
@@ -296,7 +284,7 @@ export async function generateStep3Exam(specsHtml: string, data: InputData): Pro
         ${enabledTypes.type1 ? `
         <!-- PHẦN I -->
         <div style="margin-bottom: 20px;">
-            <strong>PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn.</strong> Thí sinh trả lời từ câu 1 đến câu ... Mỗi câu hỏi thí sinh chỉ chọn một phương án.
+            <strong>PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn.</strong> Với dạng câu hỏi này học sinh thưc hiện chọn một phương án đúng duy nhất trong 4 phuong án ở mỗi câu.
             
             <!-- Loop questions -->
             <div style="margin-top: 10px;">
@@ -314,7 +302,7 @@ export async function generateStep3Exam(specsHtml: string, data: InputData): Pro
         ${enabledTypes.type2 ? `
         <!-- PHẦN II -->
         <div style="margin-bottom: 20px;">
-            <strong>PHẦN II. Câu trắc nghiệm đúng sai.</strong> Thí sinh trả lời từ câu ... đến câu ... Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn đúng hoặc sai.
+            <strong>PHẦN II. Câu trắc nghiệm đúng sai.</strong> Với dạng câu hỏi này học sinh trả lời các câu dạng Đúng-Sai. Trong mỗi câu có 4 ý nhỏ em phải chọn ý  Đúng(ghi: Đ)/Sai(ghi: S) ở mỗi câu.
             
             <!-- Loop questions -->
             <div style="margin-top: 10px;">
