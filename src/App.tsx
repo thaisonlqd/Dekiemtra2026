@@ -716,21 +716,25 @@ const App: React.FC = () => {
                   <option>Cuối kỳ 2</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-black mb-2">Thời gian (phút)</label>
-                <div className="flex items-center gap-4">
-                  <div className="relative flex-1">
+              <div className="col-span-1 sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-black mb-2">Thời gian (phút)</label>
+                  <div className="relative">
                     <input type="number" name="duration" value={inputData.duration} onChange={handleInputChange} className={`w-full p-3 pl-10 bg-white ${themeClasses.input}`} />
                     <Clock className="w-5 h-5 text-black absolute left-3 top-3.5" />
                   </div>
-                  <label className="flex items-center gap-2 cursor-pointer group whitespace-nowrap">
+                </div>
+                <div className="flex items-center">
+                  <label className="flex items-start gap-3 cursor-pointer group mt-0 sm:mt-7">
                     <input 
                       type="checkbox" 
                       checked={inputData.hasSpecialNeedsStudents}
                       onChange={(e) => setInputData(prev => ({ ...prev, hasSpecialNeedsStudents: e.target.checked }))}
-                      className="w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
+                      className="w-5 h-5 mt-0.5 text-red-600 rounded border-gray-300 focus:ring-red-500 shrink-0"
                     />
-                    <span className="text-sm font-bold text-black group-hover:text-red-600 transition-colors">Lớp có HS khuyết tật</span>
+                    <span className="text-sm font-bold text-black group-hover:text-red-600 transition-colors leading-tight">
+                      Lớp có HS khuyết tật (khi chọn vào mục này đề kiểm tra sẽ ưu tiên mức độ Nhận biết, Thông hiểu nhiều hơn Vận dụng)
+                    </span>
                   </label>
                 </div>
               </div>
@@ -1277,20 +1281,14 @@ const App: React.FC = () => {
 
             <div className="flex items-center gap-3">
               {/* Theme Switcher */}
-              <div className={`flex p-1 mr-2 ${theme === 'classic' ? 'bg-white border-2 border-black' : 'bg-white rounded-lg border border-slate-200'}`}>
-                <button
-                  onClick={() => setTheme('modern')}
-                  className={`px-3 py-1 text-xs font-bold transition-all ${theme === 'modern' ? 'bg-sky-100 text-black shadow-sm rounded-md border border-sky-200' : 'text-black hover:bg-sky-50'}`}
-                >
-                  Modern
-                </button>
-                <button
-                  onClick={() => setTheme('classic')}
-                  className={`px-3 py-1 text-xs font-bold transition-all ${theme === 'classic' ? 'bg-sky-100 text-black border-2 border-black' : 'text-black hover:bg-sky-50'}`}
-                >
-                  Classic
-                </button>
-              </div>
+              <select
+                value={theme}
+                onChange={(e) => setTheme(e.target.value as 'modern' | 'classic')}
+                className={`text-sm px-3 py-1.5 h-9 mr-2 outline-none cursor-pointer ${theme === 'classic' ? 'bg-white border-2 border-black font-bold' : 'bg-white rounded-lg border border-slate-200 font-medium'}`}
+              >
+                <option value="modern">Giao diện Modern</option>
+                <option value="classic">Giao diện Classic</option>
+              </select>
 
               <button
                 onClick={() => { setTempApiKey(apiKey || ''); setShowApiKeyModal(true); }}
@@ -1300,9 +1298,6 @@ const App: React.FC = () => {
                 {!apiKey && <span className="text-red-500 font-medium text-xs">Lấy API key để sử dụng app</span>}
                 {apiKey && <span className="text-black font-medium text-xs">Cài đặt API Key</span>}
               </button>
-              <Button variant="secondary" onClick={handleReset} icon={<RotateCcw className="w-4 h-4" />} className={`text-sm px-3 py-1.5 h-9 ${theme === 'classic' ? 'rounded-none border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:shadow-none' : ''}`}>
-                Tạo mới
-              </Button>
             </div>
           </div>
         </header>
