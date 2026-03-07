@@ -48,6 +48,18 @@ export interface InputData {
   chapters: Chapter[];
   ratioMode: 'auto' | 'manual';
   knowledgeRatio: string; // e.g., "4-3-3", "5-3-2"
+  percentages: {
+    biet: number;
+    hieu: number;
+    van_dung: number;
+  };
+  hasSpecialNeedsStudents: boolean;
+  enabledTypes: {
+    type1: boolean;
+    type2: boolean;
+    type3: boolean;
+    essay: boolean;
+  };
   questionConfig: QuestionConfig;
 }
 

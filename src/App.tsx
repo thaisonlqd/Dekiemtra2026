@@ -41,6 +41,14 @@ const App: React.FC = () => {
     chapters: [],
     ratioMode: 'auto',
     knowledgeRatio: '4-3-3',
+    percentages: { biet: 40, hieu: 30, van_dung: 30 },
+    hasSpecialNeedsStudents: false,
+    enabledTypes: {
+      type1: true,
+      type2: true,
+      type3: true,
+      essay: true,
+    },
     questionConfig: {
       type1: { biet: 8, hieu: 4, van_dung: 0 },
       type2: { 
@@ -270,7 +278,7 @@ const App: React.FC = () => {
   };
 
   const applyRatio = (ratioStr: string) => {
-    const parts = ratioStr.split('-').map(s => parseInt(s.trim()));
+    const parts = ratioStr.split('-').map(s => parseFloat(s.trim()));
     if (parts.length !== 3 || parts.some(isNaN)) return;
 
     const [rB, rH, rV] = parts; // e.g. 4, 3, 3
@@ -287,29 +295,30 @@ const App: React.FC = () => {
     };
 
     setInputData(prev => {
-      // Calculate current totals to maintain them
-      const t1Total = prev.questionConfig.type1.biet + prev.questionConfig.type1.hieu + prev.questionConfig.type1.van_dung;
-      const t2TotalItems = prev.questionConfig.type2.count * 4;
-      const t3Total = prev.questionConfig.type3.biet + prev.questionConfig.type3.hieu + prev.questionConfig.type3.van_dung;
-      const essayTotal = prev.questionConfig.essay.biet + prev.questionConfig.essay.hieu + prev.questionConfig.essay.van_dung;
+      const { enabledTypes } = prev;
+      // Calculate current totals to maintain them, but only for enabled types
+      const t1Total = enabledTypes.type1 ? (prev.questionConfig.type1.biet + prev.questionConfig.type1.hieu + prev.questionConfig.type1.van_dung) : 0;
+      const t2TotalItems = enabledTypes.type2 ? (prev.questionConfig.type2.count * 4) : 0;
+      const t3Total = enabledTypes.type3 ? (prev.questionConfig.type3.biet + prev.questionConfig.type3.hieu + prev.questionConfig.type3.van_dung) : 0;
+      const essayTotal = enabledTypes.essay ? (prev.questionConfig.essay.biet + prev.questionConfig.essay.hieu + prev.questionConfig.essay.van_dung) : 0;
 
-      const d1 = distribute(t1Total || 12); // Default 12 if 0
-      const d2 = distribute(t2TotalItems || 16); // Default 16 items (4 questions)
-      const d3 = distribute(t3Total || 6);  // Default 6
-      const dEssay = distribute(essayTotal || 1);
+      const d1 = distribute(t1Total || (enabledTypes.type1 ? 12 : 0)); 
+      const d2 = distribute(t2TotalItems || (enabledTypes.type2 ? 16 : 0));
+      const d3 = distribute(t3Total || (enabledTypes.type3 ? 6 : 0));
+      const dEssay = distribute(essayTotal || (enabledTypes.essay ? 1 : 0));
 
       return {
         ...prev,
         knowledgeRatio: ratioStr,
         questionConfig: {
           ...prev.questionConfig,
-          type1: { biet: d1.b, hieu: d1.h, van_dung: d1.v },
+          type1: enabledTypes.type1 ? { biet: d1.b, hieu: d1.h, van_dung: d1.v } : { biet: 0, hieu: 0, van_dung: 0 },
           type2: { 
             ...prev.questionConfig.type2,
-            counts: { biet: d2.b, hieu: d2.h, van_dung: d2.v }
+            counts: enabledTypes.type2 ? { biet: d2.b, hieu: d2.h, van_dung: d2.v } : { biet: 0, hieu: 0, van_dung: 0 }
           },
-          type3: { biet: d3.b, hieu: d3.h, van_dung: d3.v },
-          essay: { biet: dEssay.b, hieu: dEssay.h, van_dung: dEssay.v },
+          type3: enabledTypes.type3 ? { biet: d3.b, hieu: d3.h, van_dung: d3.v } : { biet: 0, hieu: 0, van_dung: 0 },
+          essay: enabledTypes.essay ? { biet: dEssay.b, hieu: dEssay.h, van_dung: dEssay.v } : { biet: 0, hieu: 0, van_dung: 0 },
         }
       };
     });
@@ -324,11 +333,44 @@ const App: React.FC = () => {
     applyRatio(inputData.knowledgeRatio);
   };
 
+  const handlePercentageChange = (level: keyof InputData['percentages'], value: number) => {
+    setInputData(prev => {
+      const newPercentages = { ...prev.percentages, [level]: value };
+      return { ...prev, percentages: newPercentages };
+    });
+  };
+
+  const applyPercentages = () => {
+    const { biet, hieu, van_dung } = inputData.percentages;
+    const total = biet + hieu + van_dung;
+    if (total !== 100) {
+      alert("Tổng phần trăm phải bằng 100%. Hiện tại: " + total + "%");
+      return;
+    }
+
+    const ratioStr = `${biet / 10}-${hieu / 10}-${van_dung / 10}`;
+    applyRatio(ratioStr);
+  };
+
   const calculateCurrentRatio = () => {
     const { type1, type2, type3, essay } = inputData.questionConfig;
-    const b = type1.biet + type2.counts.biet + type3.biet + essay.biet;
-    const h = type1.hieu + type2.counts.hieu + type3.hieu + essay.hieu;
-    const v = type1.van_dung + type2.counts.van_dung + type3.van_dung + essay.van_dung;
+    const { enabledTypes } = inputData;
+    
+    let b = 0, h = 0, v = 0;
+    
+    if (enabledTypes.type1) {
+      b += type1.biet; h += type1.hieu; v += type1.van_dung;
+    }
+    if (enabledTypes.type2) {
+      b += type2.counts.biet; h += type2.counts.hieu; v += type2.counts.van_dung;
+    }
+    if (enabledTypes.type3) {
+      b += type3.biet; h += type3.hieu; v += type3.van_dung;
+    }
+    if (enabledTypes.essay) {
+      b += essay.biet; h += essay.hieu; v += essay.van_dung;
+    }
+
     const total = b + h + v;
     if (total === 0) return "0-0-0";
     
@@ -337,6 +379,27 @@ const App: React.FC = () => {
     const rV = ((v / total) * 10).toFixed(1);
     return `${rB}-${rH}-${rV}`;
   };
+
+  // -- Effects --
+  useEffect(() => {
+    if (inputData.hasSpecialNeedsStudents) {
+      const newPercentages = { biet: 60, hieu: 35, van_dung: 5 };
+      setInputData(prev => ({
+        ...prev,
+        percentages: newPercentages
+      }));
+      // Auto apply
+      applyRatio("6-3.5-0.5");
+    } else {
+      const newPercentages = { biet: 40, hieu: 30, van_dung: 30 };
+      setInputData(prev => ({
+        ...prev,
+        percentages: newPercentages
+      }));
+      // Auto apply
+      applyRatio("4-3-3");
+    }
+  }, [inputData.hasSpecialNeedsStudents]);
 
   // -- Generation Handlers --
 
@@ -655,9 +718,20 @@ const App: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-black mb-2">Thời gian (phút)</label>
-                <div className="relative">
-                  <input type="number" name="duration" value={inputData.duration} onChange={handleInputChange} className={`w-full p-3 pl-10 bg-white ${themeClasses.input}`} />
-                  <Clock className="w-5 h-5 text-slate-400 absolute left-3 top-3.5" />
+                <div className="flex items-center gap-4">
+                  <div className="relative flex-1">
+                    <input type="number" name="duration" value={inputData.duration} onChange={handleInputChange} className={`w-full p-3 pl-10 bg-white ${themeClasses.input}`} />
+                    <Clock className="w-5 h-5 text-slate-400 absolute left-3 top-3.5" />
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer group whitespace-nowrap">
+                    <input 
+                      type="checkbox" 
+                      checked={inputData.hasSpecialNeedsStudents}
+                      onChange={(e) => setInputData(prev => ({ ...prev, hasSpecialNeedsStudents: e.target.checked }))}
+                      className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                    />
+                    <span className="text-sm font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">Lớp có HS khuyết tật</span>
+                  </label>
                 </div>
               </div>
             </div>
@@ -757,6 +831,49 @@ const App: React.FC = () => {
               Cấu trúc đề thi
             </h2>
 
+            {/* Question Type Selection */}
+            <div className="mb-6 bg-slate-50 p-4 rounded-lg border border-slate-200">
+              <label className="block text-sm font-bold text-slate-900 mb-3">Cấu trúc các dạng câu hỏi</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input 
+                    type="checkbox" 
+                    checked={inputData.enabledTypes.type1}
+                    onChange={(e) => setInputData(prev => ({ ...prev, enabledTypes: { ...prev.enabledTypes, type1: e.target.checked } }))}
+                    className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm font-medium text-slate-700 group-hover:text-indigo-600 transition-colors">Trắc nghiệm</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input 
+                    type="checkbox" 
+                    checked={inputData.enabledTypes.type2}
+                    onChange={(e) => setInputData(prev => ({ ...prev, enabledTypes: { ...prev.enabledTypes, type2: e.target.checked } }))}
+                    className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm font-medium text-slate-700 group-hover:text-indigo-600 transition-colors">Đúng - Sai</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input 
+                    type="checkbox" 
+                    checked={inputData.enabledTypes.type3}
+                    onChange={(e) => setInputData(prev => ({ ...prev, enabledTypes: { ...prev.enabledTypes, type3: e.target.checked } }))}
+                    className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm font-medium text-slate-700 group-hover:text-indigo-600 transition-colors">Trả lời ngắn</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input 
+                    type="checkbox" 
+                    checked={inputData.enabledTypes.essay}
+                    onChange={(e) => setInputData(prev => ({ ...prev, enabledTypes: { ...prev.enabledTypes, essay: e.target.checked } }))}
+                    className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm font-medium text-slate-700 group-hover:text-indigo-600 transition-colors">Tự luận</span>
+                </label>
+              </div>
+            </div>
+
             {/* Ratio Selection */}
             <div className="mb-6 bg-indigo-50 p-4 rounded-lg border border-indigo-100">
               <div className="flex flex-col gap-4">
@@ -782,24 +899,50 @@ const App: React.FC = () => {
                 </div>
 
                 {inputData.ratioMode === 'auto' ? (
-                  <div className="flex items-center gap-3 bg-white p-3 rounded-lg border border-indigo-200">
-                    <div className="flex-1">
-                      <p className="text-xs font-semibold text-indigo-600 uppercase mb-1">Nhập tỉ lệ mong muốn</p>
-                      <input 
-                        type="text"
-                        value={inputData.knowledgeRatio} 
-                        onChange={handleRatioChange}
-                        onBlur={handleRatioBlur}
-                        placeholder="VD: 4-3-3"
-                        className="w-full p-2 rounded border border-indigo-100 bg-slate-50 text-indigo-900 font-bold focus:ring-2 focus:ring-indigo-500 outline-none text-center"
-                      />
+                  <div className="bg-white p-4 rounded-lg border border-indigo-200">
+                    <p className="text-xs font-bold text-indigo-600 uppercase mb-4">
+                      Tỉ lệ phần trăm các mức độ (Nhận biết - Thông hiểu - Vận dụng) có trong đề kiểm tra
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nhận biết (%)</label>
+                        <input 
+                          type="number"
+                          value={inputData.percentages.biet} 
+                          onChange={(e) => handlePercentageChange('biet', parseInt(e.target.value) || 0)}
+                          className="w-full p-2 rounded border border-indigo-100 bg-slate-50 text-indigo-900 font-bold focus:ring-2 focus:ring-indigo-500 outline-none text-center"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Thông hiểu (%)</label>
+                        <input 
+                          type="number"
+                          value={inputData.percentages.hieu} 
+                          onChange={(e) => handlePercentageChange('hieu', parseInt(e.target.value) || 0)}
+                          className="w-full p-2 rounded border border-indigo-100 bg-slate-50 text-indigo-900 font-bold focus:ring-2 focus:ring-indigo-500 outline-none text-center"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Vận dụng (%)</label>
+                        <input 
+                          type="number"
+                          value={inputData.percentages.van_dung} 
+                          onChange={(e) => handlePercentageChange('van_dung', parseInt(e.target.value) || 0)}
+                          className="w-full p-2 rounded border border-indigo-100 bg-slate-50 text-indigo-900 font-bold focus:ring-2 focus:ring-indigo-500 outline-none text-center"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <div className={`text-center py-1 px-2 rounded text-[10px] font-bold ${inputData.percentages.biet + inputData.percentages.hieu + inputData.percentages.van_dung === 100 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                          Tổng: {inputData.percentages.biet + inputData.percentages.hieu + inputData.percentages.van_dung}%
+                        </div>
+                        <button 
+                          onClick={applyPercentages}
+                          className="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-xs font-bold shadow-md"
+                        >
+                          Áp dụng & Phân bổ
+                        </button>
+                      </div>
                     </div>
-                    <button 
-                      onClick={() => applyRatio(inputData.knowledgeRatio)}
-                      className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-bold h-[42px] mt-5"
-                    >
-                      Áp dụng & Phân bổ
-                    </button>
                   </div>
                 ) : (
                   <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-indigo-200">
@@ -818,26 +961,25 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 relative">
-              {inputData.ratioMode === 'auto' && (
-                <div className="absolute inset-0 bg-slate-50/40 backdrop-blur-[1px] z-10 flex items-center justify-center">
-                  <div className="bg-white/90 border border-indigo-200 px-4 py-2 rounded-full shadow-sm">
-                    <p className="text-xs font-bold text-indigo-600">Đang ở chế độ Tự động. Chuyển sang "Thủ công" để chỉnh sửa.</p>
-                  </div>
-                </div>
-              )}
-              {renderQuestionConfigRow("Dạng I (4 lựa chọn)", "type1", 8, 4, 0)}
-              {renderType2ConfigRow()}
-              {renderQuestionConfigRow("Dạng III (Trả lời ngắn)", "type3", 1, 1, 2)}
-              {renderQuestionConfigRow("Tự luận", "essay", 0, 1, 2)}
-            </div>
+            {inputData.ratioMode === 'manual' && (
+              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-4">
+                {inputData.enabledTypes.type1 && renderQuestionConfigRow("Dạng I (4 lựa chọn)", "type1", 8, 4, 0)}
+                {inputData.enabledTypes.type2 && renderType2ConfigRow()}
+                {inputData.enabledTypes.type3 && renderQuestionConfigRow("Dạng III (Trả lời ngắn)", "type3", 1, 1, 2)}
+                {inputData.enabledTypes.essay && renderQuestionConfigRow("Tự luận", "essay", 0, 1, 2)}
+                
+                {!Object.values(inputData.enabledTypes).some(v => v) && (
+                  <p className="text-center text-sm text-slate-500 py-4 italic">Vui lòng chọn ít nhất một dạng câu hỏi ở trên.</p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="pt-6 flex justify-end">
             <Button
               onClick={handleGenerateMatrix}
               isLoading={genState.isLoading}
-              disabled={selectedLessonIds.size === 0}
+              disabled={selectedLessonIds.size === 0 || !Object.values(inputData.enabledTypes).some(v => v)}
               icon={<ArrowRight className="w-5 h-5" />}
               className="w-full sm:w-auto px-8 py-3 text-lg shadow-lg shadow-teal-100"
             >
@@ -1011,6 +1153,14 @@ const App: React.FC = () => {
         chapters: [],
         ratioMode: 'auto',
         knowledgeRatio: '4-3-3',
+        percentages: { biet: 40, hieu: 30, van_dung: 30 },
+        hasSpecialNeedsStudents: false,
+        enabledTypes: {
+          type1: true,
+          type2: true,
+          type3: true,
+          essay: true,
+        },
         questionConfig: {
           type1: { biet: 8, hieu: 4, van_dung: 0 },
           type2: { 
@@ -1105,7 +1255,7 @@ const App: React.FC = () => {
               <div className="lg:hidden">
                 <h1 className="text-lg font-bold text-black leading-tight flex items-center gap-2 uppercase">
                   <FileSignature className="w-5 h-5 text-indigo-600" />
-                  Tiện ích hỗ trợ tạo đề kiểm tra
+                  Tiện ích DeKiemTra
                 </h1>
                 <p className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
                   <ShieldCheck className="w-3 h-3 text-emerald-600" />
@@ -1117,7 +1267,7 @@ const App: React.FC = () => {
             <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex-col items-center">
               <h1 className="text-lg font-bold text-black leading-tight flex items-center gap-2 uppercase">
                 <FileSignature className="w-5 h-5 text-indigo-600" />
-                Tiện ích hỗ trợ tạo đề kiểm tra
+                Tiện ích DeKiemTra
               </h1>
               <p className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
                 <ShieldCheck className="w-3 h-3 text-emerald-600" />

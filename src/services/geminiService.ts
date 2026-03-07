@@ -23,6 +23,7 @@ function getAIClient() {
 
 export async function generateStep1Matrix(data: InputData, selectedLessonIds: Set<string>): Promise<string> {
   const ai = getAIClient();
+  const { enabledTypes } = data;
   
   // Filter selected lessons
   const selectedContent = data.chapters.map(chap => {
@@ -32,10 +33,10 @@ export async function generateStep1Matrix(data: InputData, selectedLessonIds: Se
   }).filter(Boolean);
 
   // Dynamic Header Construction
-  const hasType1 = true; // Always present
-  const hasType2 = data.questionConfig.type2.count > 0;
-  const hasType3 = (data.questionConfig.type3.biet + data.questionConfig.type3.hieu + data.questionConfig.type3.van_dung) > 0;
-  const hasEssay = (data.questionConfig.essay.biet + data.questionConfig.essay.hieu + data.questionConfig.essay.van_dung) > 0;
+  const hasType1 = enabledTypes.type1;
+  const hasType2 = enabledTypes.type2;
+  const hasType3 = enabledTypes.type3;
+  const hasEssay = enabledTypes.essay;
 
   let tnkqCols = 0;
   if (hasType1) tnkqCols += 3;
@@ -84,11 +85,11 @@ export async function generateStep1Matrix(data: InputData, selectedLessonIds: Se
     ${JSON.stringify(selectedContent, null, 2)}
     
     Cấu trúc câu hỏi:
-    - Dạng I (TN nhiều lựa chọn): ${JSON.stringify(data.questionConfig.type1)}
-    - Dạng II (TN Đúng/Sai): ${data.questionConfig.type2.count} câu. Tổng ${data.questionConfig.type2.count * 4} ý.
-      Phân bổ số ý: Biết ${data.questionConfig.type2.counts.biet}, Hiểu ${data.questionConfig.type2.counts.hieu}, Vận dụng ${data.questionConfig.type2.counts.van_dung}.
-    - Dạng III (TN Trả lời ngắn): ${JSON.stringify(data.questionConfig.type3)}
-    - Tự luận: ${JSON.stringify(data.questionConfig.essay)}
+    ${enabledTypes.type1 ? `- Dạng I (TN nhiều lựa chọn): ${JSON.stringify(data.questionConfig.type1)}` : ''}
+    ${enabledTypes.type2 ? `- Dạng II (TN Đúng/Sai): ${data.questionConfig.type2.count} câu. Tổng ${data.questionConfig.type2.count * 4} ý.
+      Phân bổ số ý: Biết ${data.questionConfig.type2.counts.biet}, Hiểu ${data.questionConfig.type2.counts.hieu}, Vận dụng ${data.questionConfig.type2.counts.van_dung}.` : ''}
+    ${enabledTypes.type3 ? `- Dạng III (TN Trả lời ngắn): ${JSON.stringify(data.questionConfig.type3)}` : ''}
+    ${enabledTypes.essay ? `- Tự luận: ${JSON.stringify(data.questionConfig.essay)}` : ''}
     
     Ghi chú thêm: ${data.additionalNotes}
     
@@ -120,12 +121,13 @@ export async function generateStep1Matrix(data: InputData, selectedLessonIds: Se
 
 export async function generateStep2Specs(matrixHtml: string, data: InputData, selectedLessonIds: Set<string>): Promise<string> {
   const ai = getAIClient();
+  const { enabledTypes } = data;
 
   // Dynamic Header Construction for Specs
-  const hasType1 = true;
-  const hasType2 = data.questionConfig.type2.count > 0;
-  const hasType3 = (data.questionConfig.type3.biet + data.questionConfig.type3.hieu + data.questionConfig.type3.van_dung) > 0;
-  const hasEssay = (data.questionConfig.essay.biet + data.questionConfig.essay.hieu + data.questionConfig.essay.van_dung) > 0;
+  const hasType1 = enabledTypes.type1;
+  const hasType2 = enabledTypes.type2;
+  const hasType3 = enabledTypes.type3;
+  const hasEssay = enabledTypes.essay;
 
   let tnkqCols = 0;
   if (hasType1) tnkqCols += 3;
@@ -200,6 +202,7 @@ export async function generateStep2Specs(matrixHtml: string, data: InputData, se
 
 export async function generateStep3Exam(specsHtml: string, data: InputData): Promise<string> {
   const ai = getAIClient();
+  const { enabledTypes } = data;
   
   const prompt = `
     TẠO ĐỀ KIỂM TRA (BƯỚC 3) - TUÂN THỦ CẤU TRÚC CÔNG VĂN 7991/BGDĐT-GDTrH
@@ -243,6 +246,7 @@ export async function generateStep3Exam(specsHtml: string, data: InputData): Pro
             </div>
         </div>
 
+        ${enabledTypes.type1 ? `
         <!-- PHẦN I -->
         <div style="margin-bottom: 20px;">
             <strong>PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn.</strong> Thí sinh trả lời từ câu 1 đến câu ... Mỗi câu hỏi thí sinh chỉ chọn một phương án.
@@ -258,7 +262,9 @@ export async function generateStep3Exam(specsHtml: string, data: InputData): Pro
                 </div>
             </div>
         </div>
+        ` : ''}
 
+        ${enabledTypes.type2 ? `
         <!-- PHẦN II -->
         <div style="margin-bottom: 20px;">
             <strong>PHẦN II. Câu trắc nghiệm đúng sai.</strong> Thí sinh trả lời từ câu ... đến câu ... Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn đúng hoặc sai.
@@ -274,7 +280,9 @@ export async function generateStep3Exam(specsHtml: string, data: InputData): Pro
                 </div>
             </div>
         </div>
+        ` : ''}
 
+        ${enabledTypes.type3 ? `
         <!-- PHẦN III -->
         <div style="margin-bottom: 20px;">
             <strong>PHẦN III. Câu trắc nghiệm trả lời ngắn.</strong> Thí sinh trả lời từ câu ... đến câu ...
@@ -284,6 +292,18 @@ export async function generateStep3Exam(specsHtml: string, data: InputData): Pro
                 <strong>Câu ...:</strong> Nội dung câu hỏi...
             </div>
         </div>
+        ` : ''}
+
+        ${enabledTypes.essay ? `
+        <!-- PHẦN TỰ LUẬN -->
+        <div style="margin-bottom: 20px;">
+            <strong>PHẦN TỰ LUẬN.</strong>
+            <!-- Loop questions -->
+            <div style="margin-top: 10px;">
+                <strong>Câu ...:</strong> Nội dung câu hỏi...
+            </div>
+        </div>
+        ` : ''}
 
         <div style="text-align: center; margin-top: 30px; font-weight: bold;">
             ---HẾT---
@@ -295,13 +315,11 @@ export async function generateStep3Exam(specsHtml: string, data: InputData): Pro
         <h3 style="text-align: center; text-transform: uppercase; margin-bottom: 20px;">HƯỚNG DẪN CHẤM</h3>
         
         <!-- Generate tables for answers here -->
-        <!-- Table styles: border-collapse: collapse; width: 100%; text-align: center; -->
-        <!-- Th/Td styles: border: 1px solid black; padding: 5px; -->
     </div>
 
     YÊU CẦU NỘI DUNG:
     1. Sinh câu hỏi dựa trên Bảng đặc tả đã cung cấp.
-    2. Đảm bảo số lượng câu hỏi chính xác cho từng phần (Dạng 1, 2, 3).
+    2. Đảm bảo số lượng câu hỏi chính xác cho từng phần đã bật: ${JSON.stringify(enabledTypes)}.
     3. ĐỐI VỚI DẠNG II (Đúng/Sai): 
        - Mỗi câu hỏi phải là một BÀI TOÁN TÌNH HUỐNG cụ thể trong thực tế.
        - Sau tình huống là 4 ý (a, b, c, d) để học sinh chọn Đúng hoặc Sai.
