@@ -19,6 +19,45 @@ function getAIClient() {
   return new GoogleGenAI({ apiKey });
 }
 
+function calculateTnlRatio(data: InputData) {
+  const { enabledTypes, questionConfig } = data;
+  let tnPoints = 0;
+  if (enabledTypes.type1) tnPoints += (questionConfig.type1.biet + questionConfig.type1.hieu + questionConfig.type1.van_dung) * 0.25;
+  if (enabledTypes.type2) tnPoints += questionConfig.type2.count * 1.0;
+  if (enabledTypes.type3) tnPoints += (questionConfig.type3.biet + questionConfig.type3.hieu + questionConfig.type3.van_dung) * 0.25;
+  
+  // Heuristic: assume total 10 points
+  const tnPercent = Math.min(100, Math.round((tnPoints / 10) * 100));
+  const tlPercent = 100 - tnPercent;
+  
+  return { tnPercent, tlPercent };
+}
+
+function getHeaderTemplate(data: InputData, title: string) {
+  const { tnPercent, tlPercent } = calculateTnlRatio(data);
+  const schoolYear = "2024 - 2025"; // Placeholder or derive
+
+  return `
+  <div style="display: flex; justify-content: space-between; margin-bottom: 20px; font-family: 'Times New Roman', serif; color: #000;">
+      <div style="text-align: center; width: 45%;">
+          <div style="font-weight: bold; text-transform: uppercase;">TRƯỜNG THCS LÊ QUÝ ĐÔN</div>
+          <div style="font-weight: bold; text-transform: uppercase;">TỔ KHOA HỌC TỰ NHIÊN</div>
+          <div style="border-bottom: 1px solid black; width: 120px; margin: 5px auto;"></div>
+      </div>
+      <div style="text-align: center; width: 50%;">
+          <div style="font-weight: bold; text-transform: uppercase;">${title}</div>
+          <div style="font-weight: bold; text-transform: uppercase;">KIỂM TRA ${data.examType.toUpperCase()}, NĂM HỌC ${schoolYear}</div>
+          <div style="font-weight: bold; text-transform: uppercase;">MÔN: <span style="border-bottom: 1px solid black;">${data.subject.toUpperCase()} ${data.grade.toUpperCase()}</span></div>
+      </div>
+  </div>
+  <div style="margin-bottom: 20px; font-family: 'Times New Roman', serif; line-height: 1.6; color: #000; font-size: 14px;">
+      <div>- <strong>Thời điểm kiểm tra:</strong> <span style="color: red; font-style: italic;">${data.examType}</span></div>
+      <div>- <strong>Thời gian làm bài:</strong> <span style="color: red; font-style: italic;">${data.duration} phút.</span></div>
+      <div>- <strong>Hình thức kiểm tra:</strong> <span style="color: red; font-style: italic;">Kết hợp giữa trắc nghiệm và tự luận (tỉ lệ ${tnPercent}% trắc nghiệm, ${tlPercent}% tự luận).</span></div>
+      <div>- <strong>Cấu trúc:</strong> Mức độ đề: <span style="color: red; font-style: italic;">${data.percentages.biet}% Nhận biết; ${data.percentages.hieu}% Thông hiểu; ${data.percentages.van_dung}% Vận dụng</span></div>
+  </div>`;
+}
+
 // --- Generation Functions ---
 
 export async function generateStep1Matrix(data: InputData, selectedLessonIds: Set<string>): Promise<string> {
@@ -44,6 +83,7 @@ export async function generateStep1Matrix(data: InputData, selectedLessonIds: Se
   if (hasType3) tnkqCols += 3;
 
   const totalLevelCols = tnkqCols + (hasEssay ? 3 : 0);
+  const fullHeader = getHeaderTemplate(data, "MA TRẬN ĐỀ");
 
   const headerHtml = `
   <thead>
@@ -95,7 +135,10 @@ export async function generateStep1Matrix(data: InputData, selectedLessonIds: Se
     
     YÊU CẦU:
     - Tạo bảng Ma trận đề thi dạng HTML Table.
-    - BẮT BUỘC sử dụng cấu trúc Header sau (Copy y nguyên):
+    - BẮT BUỘC chèn đoạn Header sau vào ĐẦU output (trước thẻ table):
+    ${fullHeader}
+    
+    - BẮT BUỘC sử dụng cấu trúc Header của bảng sau (Copy y nguyên):
     ${headerHtml}
     
     - Phân bổ số câu hỏi vào các bài học/chủ đề dựa trên thời lượng và tầm quan trọng.
@@ -135,6 +178,7 @@ export async function generateStep2Specs(matrixHtml: string, data: InputData, se
   if (hasType3) tnkqCols += 3;
 
   const totalLevelCols = tnkqCols + (hasEssay ? 3 : 0);
+  const fullHeader = getHeaderTemplate(data, "BẢN ĐẶC TẢ KỸ THUẬT ĐỀ");
 
   const headerHtml = `
   <thead>
@@ -175,7 +219,10 @@ export async function generateStep2Specs(matrixHtml: string, data: InputData, se
     
     YÊU CẦU:
     - Output dạng HTML Table.
-    - BẮT BUỘC sử dụng cấu trúc Header sau:
+    - BẮT BUỘC chèn đoạn Header sau vào ĐẦU output (trước thẻ table):
+    ${fullHeader}
+    
+    - BẮT BUỘC sử dụng cấu trúc Header của bảng sau:
     ${headerHtml}
     
     - Cột "Yêu cầu cần đạt": Liệt kê các chuẩn kiến thức kĩ năng (Biết..., Hiểu..., Vận dụng...).
