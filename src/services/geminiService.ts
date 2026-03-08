@@ -20,14 +20,29 @@ function getAIClient() {
 }
 
 function calculateTnlRatio(data: InputData) {
-  const { enabledTypes, questionConfig } = data;
+  const { enabledTypes, scores } = data;
   let tnPoints = 0;
-  if (enabledTypes.type1) tnPoints += (questionConfig.type1.biet + questionConfig.type1.hieu + questionConfig.type1.van_dung) * 0.25;
-  if (enabledTypes.type2) tnPoints += questionConfig.type2.count * 1.0;
-  if (enabledTypes.type3) tnPoints += (questionConfig.type3.biet + questionConfig.type3.hieu + questionConfig.type3.van_dung) * 0.25;
+  let totalPoints = 0;
+
+  if (enabledTypes.type1) {
+    tnPoints += scores.type1;
+    totalPoints += scores.type1;
+  }
+  if (enabledTypes.type2) {
+    tnPoints += scores.type2;
+    totalPoints += scores.type2;
+  }
+  if (enabledTypes.type3) {
+    tnPoints += scores.type3;
+    totalPoints += scores.type3;
+  }
+  if (enabledTypes.essay) {
+    totalPoints += scores.essay;
+  }
   
-  // Heuristic: assume total 10 points
-  const tnPercent = Math.min(100, Math.round((tnPoints / 10) * 100));
+  if (totalPoints === 0) return { tnPercent: 0, tlPercent: 0 };
+
+  const tnPercent = Math.round((tnPoints / totalPoints) * 100);
   const tlPercent = 100 - tnPercent;
   
   return { tnPercent, tlPercent };
@@ -71,39 +86,34 @@ export async function generateStep1Matrix(data: InputData, selectedLessonIds: Se
     return { ...chap, lessons };
   }).filter(Boolean);
 
-  // Dynamic Header Construction
-  const hasType1 = enabledTypes.type1;
-  const hasType2 = enabledTypes.type2;
-  const hasType3 = enabledTypes.type3;
-  const hasEssay = enabledTypes.essay;
-
-  const numTypes = (hasType1 ? 1 : 0) + (hasType2 ? 1 : 0) + (hasType3 ? 1 : 0) + (hasEssay ? 1 : 0);
-  let typeHeaders = '';
-  if (hasType1) typeHeaders += '<th>Phần I</th>';
-  if (hasType2) typeHeaders += '<th>Phần II</th>';
-  if (hasType3) typeHeaders += '<th>Phần III</th>';
-  if (hasEssay) typeHeaders += '<th>Tự luận</th>';
-
+  // Fixed Header Construction for 7991 Format
   const fullHeader = getHeaderTemplate(data, "MA TRẬN ĐỀ");
 
   const headerHtml = `
   <thead>
     <tr>
-      <th rowspan="2">TT</th>
-      <th rowspan="2">Chủ đề/Chương</th>
-      <th rowspan="2">Nội dung/đơn vị kiến thức</th>
-      <th colspan="${numTypes}">Nhận biết</th>
-      <th colspan="${numTypes}">Thông hiểu</th>
-      <th colspan="${numTypes}">Vận dụng</th>
-      <th colspan="2">Tổng số câu</th>
-      <th rowspan="2">Tỉ lệ %<br>điểm</th>
+      <th rowspan="4">TT</th>
+      <th rowspan="4">Chủ đề/Chương</th>
+      <th rowspan="4">Nội dung/đơn vị kiến thức</th>
+      <th colspan="12">Mức độ đánh giá</th>
+      <th colspan="3" rowspan="3">Tổng</th>
+      <th rowspan="4">Tỉ lệ %<br>điểm</th>
     </tr>
     <tr>
-      ${typeHeaders}
-      ${typeHeaders}
-      ${typeHeaders}
-      <th>TNKQ</th>
-      <th>TL</th>
+      <th colspan="9">TNKQ</th>
+      <th colspan="3" rowspan="2">Tự luận</th>
+    </tr>
+    <tr>
+      <th colspan="3">Nhiều lựa chọn</th>
+      <th colspan="3">"Đúng - Sai"</th>
+      <th colspan="3">Trả lời ngắn</th>
+    </tr>
+    <tr>
+      <th>Biết</th><th>Hiểu</th><th>Vận dụng</th>
+      <th>Biết</th><th>Hiểu</th><th>Vận dụng</th>
+      <th>Biết</th><th>Hiểu</th><th>Vận dụng</th>
+      <th>Biết</th><th>Hiểu</th><th>Vận dụng</th>
+      <th>Biết</th><th>Hiểu</th><th>Vận dụng</th>
     </tr>
   </thead>`;
 
@@ -118,12 +128,12 @@ export async function generateStep1Matrix(data: InputData, selectedLessonIds: Se
     Nội dung kiến thức cần kiểm tra:
     ${JSON.stringify(selectedContent, null, 2)}
     
-    Cấu trúc câu hỏi:
-    ${enabledTypes.type1 ? `- Dạng I (TN nhiều lựa chọn): ${JSON.stringify(data.questionConfig.type1)}` : ''}
+    Cấu trúc câu hỏi và điểm số:
+    ${enabledTypes.type1 ? `- Dạng I (TN nhiều lựa chọn): ${JSON.stringify(data.questionConfig.type1)}. Tổng điểm phần này: ${data.scores.type1} điểm.` : ''}
     ${enabledTypes.type2 ? `- Dạng II (TN Đúng/Sai): ${data.questionConfig.type2.count} câu. Tổng ${data.questionConfig.type2.count * 4} ý.
-      Phân bổ số ý: Biết ${data.questionConfig.type2.counts.biet}, Hiểu ${data.questionConfig.type2.counts.hieu}, Vận dụng ${data.questionConfig.type2.counts.van_dung}.` : ''}
-    ${enabledTypes.type3 ? `- Dạng III (TN Trả lời ngắn): ${JSON.stringify(data.questionConfig.type3)}` : ''}
-    ${enabledTypes.essay ? `- Tự luận: ${JSON.stringify(data.questionConfig.essay)}` : ''}
+      Phân bổ số ý: Biết ${data.questionConfig.type2.counts.biet}, Hiểu ${data.questionConfig.type2.counts.hieu}, Vận dụng ${data.questionConfig.type2.counts.van_dung}. Tổng điểm phần này: ${data.scores.type2} điểm.` : ''}
+    ${enabledTypes.type3 ? `- Dạng III (TN Trả lời ngắn): ${JSON.stringify(data.questionConfig.type3)}. Tổng điểm phần này: ${data.scores.type3} điểm.` : ''}
+    ${enabledTypes.essay ? `- Tự luận: ${JSON.stringify(data.questionConfig.essay)}. Tổng điểm phần này: ${data.scores.essay} điểm.` : ''}
     
     Ghi chú thêm: ${data.additionalNotes}
     
@@ -131,9 +141,12 @@ export async function generateStep1Matrix(data: InputData, selectedLessonIds: Se
     NGUỒN DỮ LIỆU THAM KHẢO:
     Sử dụng nội dung từ các tài liệu sau đây để phân bổ nội dung kiến thức cho phù hợp.
     ${data.sourceMaterials.map(m => `--- Bắt đầu nội dung file: ${m.fileName} ---\n${m.content}\n--- Kết thúc nội dung file: ${m.fileName} ---`).join('\n\n')}
-    ` : ''}
+    ` : `
+    KHÔNG CÓ TÀI LIỆU THAM KHẢO:
+    Hãy sử dụng kiến thức chuyên môn của bạn về chương trình giáo dục phổ thông hiện hành để xây dựng nội dung phù hợp với Khối lớp và Môn học đã chọn.
+    `}
     
-    YÊU CẦU:
+    YÊU CẦU VỀ ĐỊNH DẠNG (QUAN TRỌNG - TUÂN THỦ MẪU 7991):
     - Tạo bảng Ma trận đề thi dạng HTML Table.
     - BẮT BUỘC chèn đoạn Header sau vào ĐẦU output (trước thẻ table):
     ${fullHeader}
@@ -141,12 +154,28 @@ export async function generateStep1Matrix(data: InputData, selectedLessonIds: Se
     - BẮT BUỘC sử dụng cấu trúc Header của bảng sau (Copy y nguyên):
     ${headerHtml}
     
+    - CẤU TRÚC CÁC CỘT (19 CỘT):
+      1. TT
+      2. Chủ đề/Chương
+      3. Nội dung/đơn vị kiến thức
+      4-6. TNKQ Nhiều lựa chọn (Biết, Hiểu, Vận dụng)
+      7-9. TNKQ Đúng/Sai (Biết, Hiểu, Vận dụng)
+      10-12. TNKQ Trả lời ngắn (Biết, Hiểu, Vận dụng)
+      13-15. Tự luận (Biết, Hiểu, Vận dụng)
+      16-18. Tổng (Biết, Hiểu, Vận dụng) -> Tổng hợp số câu/ý của dòng đó theo từng mức độ.
+      19. Tỉ lệ % điểm
+
+    - QUY ĐỊNH GHI NỘI DUNG TRONG CÁC Ô (Cột 4-15):
+      + Nếu có câu hỏi, ghi số lượng (ví dụ: "2", "4").
+      + Nếu không có, để trống.
+      + Lưu ý: Cột Đúng/Sai đếm theo số Ý. Các cột khác đếm theo số CÂU.
+
     - Phân bổ số câu hỏi vào các bài học/chủ đề dựa trên thời lượng và tầm quan trọng.
     - Đảm bảo tổng số câu khớp với cấu hình.
-    - Cuối bảng phải có các hàng tổng kết chính xác theo mẫu:
-      1. Hàng "Tổng số câu": Tổng số câu hỏi cho từng cột mức độ.
-      2. Hàng "Tổng số điểm": Tổng điểm tương ứng.
-      3. Hàng "Tỉ lệ %": Tỉ lệ phần trăm điểm số.
+    - Cuối bảng phải có các hàng tổng kết chính xác:
+      1. Hàng "Tổng số câu": Tổng kết lại số câu/ý cho từng cột.
+      2. Hàng "Tổng số điểm": Tổng điểm tương ứng cho từng cột.
+      3. Hàng "Tỉ lệ %": Tỉ lệ phần trăm điểm số cho từng cột.
     - Output CHỈ CHỨA mã HTML của bảng (thẻ table). KHÔNG được có bất kỳ văn bản dẫn nhập, giải thích, markdown code block hay ghi chú nào khác.
   `;
 
@@ -166,36 +195,32 @@ export async function generateStep2Specs(matrixHtml: string, data: InputData, se
   const ai = getAIClient();
   const { enabledTypes } = data;
 
-  // Dynamic Header Construction for Specs
-  const hasType1 = enabledTypes.type1;
-  const hasType2 = enabledTypes.type2;
-  const hasType3 = enabledTypes.type3;
-  const hasEssay = enabledTypes.essay;
-
-  const numTypes = (hasType1 ? 1 : 0) + (hasType2 ? 1 : 0) + (hasType3 ? 1 : 0) + (hasEssay ? 1 : 0);
-  let typeHeaders = '';
-  if (hasType1) typeHeaders += '<th>Phần I</th>';
-  if (hasType2) typeHeaders += '<th>Phần II</th>';
-  if (hasType3) typeHeaders += '<th>Phần III</th>';
-  if (hasEssay) typeHeaders += '<th>Tự luận</th>';
-
+  // Fixed Header Construction for Specs (7991 Format)
   const fullHeader = getHeaderTemplate(data, "BẢN ĐẶC TẢ KỸ THUẬT ĐỀ");
 
   const headerHtml = `
   <thead>
     <tr>
-      <th rowspan="2">TT</th>
-      <th rowspan="2">Chủ đề/Chương</th>
-      <th rowspan="2">Nội dung/đơn vị kiến thức</th>
-      <th rowspan="2">Yêu cầu cần đạt</th>
-      <th colspan="${numTypes}">Nhận biết</th>
-      <th colspan="${numTypes}">Thông hiểu</th>
-      <th colspan="${numTypes}">Vận dụng</th>
+      <th rowspan="4">TT</th>
+      <th rowspan="4">Chủ đề/Chương</th>
+      <th rowspan="4">Nội dung/đơn vị kiến thức</th>
+      <th rowspan="4">Yêu cầu cần đạt</th>
+      <th colspan="12">Số câu hỏi ở các mức độ đánh giá</th>
     </tr>
     <tr>
-      ${typeHeaders}
-      ${typeHeaders}
-      ${typeHeaders}
+      <th colspan="9">TNKQ</th>
+      <th colspan="3" rowspan="2">Tự luận</th>
+    </tr>
+    <tr>
+      <th colspan="3">Nhiều lựa chọn</th>
+      <th colspan="3">"Đúng - Sai"</th>
+      <th colspan="3">Trả lời ngắn</th>
+    </tr>
+    <tr>
+      <th>Biết</th><th>Hiểu</th><th>Vận dụng</th>
+      <th>Biết</th><th>Hiểu</th><th>Vận dụng</th>
+      <th>Biết</th><th>Hiểu</th><th>Vận dụng</th>
+      <th>Biết</th><th>Hiểu</th><th>Vận dụng</th>
     </tr>
   </thead>`;
   
@@ -214,7 +239,10 @@ export async function generateStep2Specs(matrixHtml: string, data: InputData, se
     NGUỒN DỮ LIỆU THAM KHẢO:
     Sử dụng nội dung từ các tài liệu sau đây để xây dựng yêu cầu cần đạt cho phù hợp.
     ${data.sourceMaterials.map(m => `--- Bắt đầu nội dung file: ${m.fileName} ---\n${m.content}\n--- Kết thúc nội dung file: ${m.fileName} ---`).join('\n\n')}
-    ` : ''}
+    ` : `
+    KHÔNG CÓ TÀI LIỆU THAM KHẢO:
+    Hãy sử dụng kiến thức chuyên môn của bạn về chương trình giáo dục phổ thông hiện hành để xây dựng nội dung phù hợp với Khối lớp và Môn học đã chọn.
+    `}
     
     YÊU CẦU:
     - Output dạng HTML Table.
@@ -224,17 +252,33 @@ export async function generateStep2Specs(matrixHtml: string, data: InputData, se
     - BẮT BUỘC sử dụng cấu trúc Header của bảng sau:
     ${headerHtml}
     
+    - CẤU TRÚC CÁC CỘT (16 CỘT):
+      1. TT
+      2. Chủ đề/Chương
+      3. Nội dung/đơn vị kiến thức
+      4. Yêu cầu cần đạt
+      5-7. TNKQ Nhiều lựa chọn (Biết, Hiểu, Vận dụng)
+      8-10. TNKQ Đúng/Sai (Biết, Hiểu, Vận dụng)
+      11-13. TNKQ Trả lời ngắn (Biết, Hiểu, Vận dụng)
+      14-16. Tự luận (Biết, Hiểu, Vận dụng)
+
     - Cột "Yêu cầu cần đạt": Liệt kê các chuẩn kiến thức kĩ năng (Biết..., Hiểu..., Vận dụng...).
-    - Các cột Mức độ đánh giá:
+    - Các cột Mức độ đánh giá (Cột 5-16):
       + KHÔNG điền số lượng câu hỏi đơn thuần.
       + BẮT BUỘC điền MÃ CÂU HỎI cụ thể để thể hiện vị trí.
+      + CHÚ Ý QUAN TRỌNG VỀ VỊ TRÍ CỘT:
+        * Cột 11, 12, 13 là cho Trả lời ngắn (Biết, Hiểu, Vận dụng).
+        * Cột 14, 15, 16 là cho Tự luận (Biết, Hiểu, Vận dụng).
+        * TUYỆT ĐỐI KHÔNG ĐIỀN NHẦM CỘT.
       + Quy ước mã:
         * Dạng I (Nhiều lựa chọn): C1, C2, C3...
         * Dạng II (Đúng/Sai): Ghi rõ ý. Ví dụ: C1Y1 (Câu 1 Ý 1), C1Y2, C2Y3...
-        * Dạng III (Trả lời ngắn): C...
+        * Dạng III (Trả lời ngắn): C... (Ví dụ: C1, C2 nếu đánh số tiếp theo, hoặc ghi rõ "TLN1", "TLN2" để phân biệt).
         * Tự luận: TL1...
       + Ví dụ: Nếu ô này có 2 câu là Câu 1 và Câu 5, hãy ghi: "C1, C5".
-    - Cuối bảng có các hàng tổng kết: "Tổng số câu", "Tổng số điểm", "Tỉ lệ %".
+      + Nếu không có câu hỏi, để trống.
+
+    - Cuối bảng có các hàng tổng kết: "Tổng số câu", "Tổng số điểm", "Tỉ lệ %" cho từng cột từ 5 đến 16.
   `;
 
   const response = await ai.models.generateContent({
@@ -374,6 +418,13 @@ export async function generateStep3Exam(specsHtml: string, data: InputData): Pro
         <!-- Generate tables for answers here -->
     </div>
 
+    YÊU CẦU VỀ HƯỚNG DẪN CHẤM (ANSWER KEY):
+    1. Tạo bảng đáp án cho từng phần.
+    2. ĐỐI VỚI PHẦN II (TRẮC NGHIỆM ĐÚNG/SAI):
+       - BẮT BUỘC phải ghi dòng chú thích cách tính điểm như sau: "Mỗi câu hỏi 1 điểm gồm 4 ý nhỏ (a,b,c,d) học sinh trả lời đúng 1 ý được tính 0.25 điểm".
+       - KHÔNG ĐƯỢC ghi là "Điểm tính theo số ý đúng trong mỗi câu" hay bất kỳ cách diễn đạt nào khác.
+    3. Trình bày rõ ràng, dễ nhìn.
+
     YÊU CẦU NỘI DUNG:
     1. Sinh câu hỏi dựa trên Bảng đặc tả đã cung cấp.
     2. Đảm bảo số lượng câu hỏi chính xác cho từng phần đã bật: ${JSON.stringify(enabledTypes)}.
@@ -398,6 +449,11 @@ export async function generateStep3Exam(specsHtml: string, data: InputData): Pro
 
 // --- File Processing ---
 
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Initialize PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
 export async function extractTextFromFile(file: File): Promise<string> {
   const ai = getAIClient();
   
@@ -406,25 +462,41 @@ export async function extractTextFromFile(file: File): Promise<string> {
     const result = await mammoth.extractRawText({ arrayBuffer });
     return result.value;
   } else if (file.type === 'application/pdf') {
-    const base64 = await new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        resolve(result.split(',')[1]);
-      };
-      reader.readAsDataURL(file);
-    });
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: {
-        parts: [
-          { inlineData: { mimeType: 'application/pdf', data: base64 } },
-          { text: "Extract all text from this document. Return only the text content without any formatting or markdown." }
-        ]
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let fullText = '';
+      
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map((item: any) => item.str).join(' ');
+        fullText += pageText + '\n';
       }
-    });
-    return response.text || "";
+      return fullText;
+    } catch (error) {
+      console.error("PDF extraction failed, falling back to Gemini:", error);
+      // Fallback to Gemini if local parsing fails
+      const base64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const result = e.target?.result as string;
+          resolve(result.split(',')[1]);
+        };
+        reader.readAsDataURL(file);
+      });
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: {
+          parts: [
+            { inlineData: { mimeType: 'application/pdf', data: base64 } },
+            { text: "Extract all text from this document. Return only the text content without any formatting or markdown." }
+          ]
+        }
+      });
+      return response.text || "";
+    }
   } else {
     // Assume text file
     return await file.text();

@@ -67,6 +67,12 @@ export interface InputData {
   };
   questionConfig: QuestionConfig;
   sourceMaterials: SourceMaterial[];
+  scores: {
+    type1: number;
+    type2: number;
+    type3: number;
+    essay: number;
+  };
 }
 
 export interface GenerationState {

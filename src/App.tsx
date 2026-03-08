@@ -58,7 +58,13 @@ const App: React.FC = () => {
       type3: { biet: 1, hieu: 1, van_dung: 2 },
       essay: { biet: 0, hieu: 1, van_dung: 2 },
     },
-    sourceMaterials: []
+    sourceMaterials: [],
+    scores: {
+      type1: 3.0,
+      type2: 3.0,
+      type3: 1.0,
+      essay: 3.0,
+    }
   });
 
   // -- UI State --
@@ -391,31 +397,69 @@ const App: React.FC = () => {
   };
 
   const calculateCurrentRatio = () => {
-    const { type1, type2, type3, essay } = inputData.questionConfig;
-    const { enabledTypes } = inputData;
+    // Calculate total score for each level based on question config and scores
+    let totalScoreBiet = 0;
+    let totalScoreHieu = 0;
+    let totalScoreVanDung = 0;
+
+    const { enabledTypes, questionConfig, scores } = inputData;
     
-    let b = 0, h = 0, v = 0;
-    
+    // Safety check for scores
+    if (!scores) return "0% - 0% - 0%";
+
+    // Type 1: Multiple Choice
     if (enabledTypes.type1) {
-      b += type1.biet; h += type1.hieu; v += type1.van_dung;
-    }
-    if (enabledTypes.type2) {
-      b += type2.counts.biet; h += type2.counts.hieu; v += type2.counts.van_dung;
-    }
-    if (enabledTypes.type3) {
-      b += type3.biet; h += type3.hieu; v += type3.van_dung;
-    }
-    if (enabledTypes.essay) {
-      b += essay.biet; h += essay.hieu; v += essay.van_dung;
+      const totalQ = questionConfig.type1.biet + questionConfig.type1.hieu + questionConfig.type1.van_dung;
+      if (totalQ > 0) {
+        const scorePerQ = (scores.type1 || 0) / totalQ;
+        totalScoreBiet += questionConfig.type1.biet * scorePerQ;
+        totalScoreHieu += questionConfig.type1.hieu * scorePerQ;
+        totalScoreVanDung += questionConfig.type1.van_dung * scorePerQ;
+      }
     }
 
-    const total = b + h + v;
-    if (total === 0) return "0-0-0";
-    
-    const rB = ((b / total) * 10).toFixed(1);
-    const rH = ((h / total) * 10).toFixed(1);
-    const rV = ((v / total) * 10).toFixed(1);
-    return `${rB}-${rH}-${rV}`;
+    // Type 2: True/False
+    if (enabledTypes.type2) {
+      const totalItems = questionConfig.type2.count * 4;
+      if (totalItems > 0) {
+        // Assume score is distributed per item (ý) for ratio calculation purposes
+        const scorePerItem = (scores.type2 || 0) / totalItems;
+        totalScoreBiet += questionConfig.type2.counts.biet * scorePerItem;
+        totalScoreHieu += questionConfig.type2.counts.hieu * scorePerItem;
+        totalScoreVanDung += questionConfig.type2.counts.van_dung * scorePerItem;
+      }
+    }
+
+    // Type 3: Short Answer
+    if (enabledTypes.type3) {
+      const totalQ = questionConfig.type3.biet + questionConfig.type3.hieu + questionConfig.type3.van_dung;
+      if (totalQ > 0) {
+        const scorePerQ = (scores.type3 || 0) / totalQ;
+        totalScoreBiet += questionConfig.type3.biet * scorePerQ;
+        totalScoreHieu += questionConfig.type3.hieu * scorePerQ;
+        totalScoreVanDung += questionConfig.type3.van_dung * scorePerQ;
+      }
+    }
+
+    // Essay
+    if (enabledTypes.essay) {
+      const totalQ = questionConfig.essay.biet + questionConfig.essay.hieu + questionConfig.essay.van_dung;
+      if (totalQ > 0) {
+        const scorePerQ = (scores.essay || 0) / totalQ;
+        totalScoreBiet += questionConfig.essay.biet * scorePerQ;
+        totalScoreHieu += questionConfig.essay.hieu * scorePerQ;
+        totalScoreVanDung += questionConfig.essay.van_dung * scorePerQ;
+      }
+    }
+
+    const totalScore = totalScoreBiet + totalScoreHieu + totalScoreVanDung;
+    if (totalScore === 0) return "0% - 0% - 0%";
+
+    const pB = Math.round((totalScoreBiet / totalScore) * 100);
+    const pH = Math.round((totalScoreHieu / totalScore) * 100);
+    const pV = 100 - pB - pH;
+
+    return `${pB}% - ${pH}% - ${pV}%`;
   };
 
   // -- Effects --
@@ -522,16 +566,38 @@ const App: React.FC = () => {
     typeKey: keyof QuestionConfig,
     defaultB: number,
     defaultH: number,
-    defaultV: number
+    defaultV: number,
+    scoreKey: keyof typeof inputData.scores
   ) => {
     if (typeKey === 'type2') return null; // Should use renderType2ConfigRow instead
     
     const config = inputData.questionConfig[typeKey] as LevelConfig;
 
     return (
-      <div className="grid grid-cols-4 gap-4 items-center py-2 border-b border-slate-100 last:border-0">
-        <span className="text-sm font-semibold text-black">{label}</span>
-        <div className="flex flex-col">
+      <div className="grid grid-cols-12 gap-4 items-center py-2 border-b border-slate-100 last:border-0">
+        <div className="col-span-3 flex flex-col">
+          <span className="text-sm font-semibold text-black">{label}</span>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-xs text-slate-500">Điểm:</span>
+            <input
+              type="number"
+              step="0.1"
+              className="w-16 p-1 border rounded bg-white text-center text-xs font-bold text-blue-600"
+              value={inputData.scores?.[scoreKey] || 0}
+              onChange={(e) => setInputData(prev => ({
+                ...prev,
+                scores: { ...prev.scores, [scoreKey]: parseFloat(e.target.value) || 0 }
+              }))}
+            />
+          </div>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-xs text-slate-500">Số câu:</span>
+            <span className="text-xs font-bold text-black bg-slate-100 px-2 py-0.5 rounded min-w-[2rem] text-center">
+              {config.biet + config.hieu + config.van_dung}
+            </span>
+          </div>
+        </div>
+        <div className="col-span-3 flex flex-col">
           <span className="text-xs text-black mb-1">Biết</span>
           <input
             type="number"
@@ -540,7 +606,7 @@ const App: React.FC = () => {
             onChange={(e) => updateQuestionConfig(typeKey, 'biet', parseInt(e.target.value))}
           />
         </div>
-        <div className="flex flex-col">
+        <div className="col-span-3 flex flex-col">
           <span className="text-xs text-black mb-1">Hiểu</span>
           <input
             type="number"
@@ -549,7 +615,7 @@ const App: React.FC = () => {
             onChange={(e) => updateQuestionConfig(typeKey, 'hieu', parseInt(e.target.value))}
           />
         </div>
-        <div className="flex flex-col">
+        <div className="col-span-3 flex flex-col">
           <span className="text-xs text-black mb-1">Vận dụng</span>
           <input
             type="number"
@@ -569,14 +635,25 @@ const App: React.FC = () => {
     const isValid = currentTotal === totalItems;
 
     const updateType2Count = (newCount: number) => {
-      // When question count changes, redistribute items based on ratio
+      // When question count changes, redistribute items based on CURRENT distribution
       const newTotalItems = newCount * 4;
-      // Parse current ratio
-      const parts = inputData.knowledgeRatio.split('-').map(s => parseInt(s.trim()));
+      
       let rB = 4, rH = 3, rV = 3;
-      if (parts.length === 3 && !parts.some(isNaN)) {
-        [rB, rH, rV] = parts;
+      
+      // Calculate current distribution if available
+      const currentSum = counts.biet + counts.hieu + counts.van_dung;
+      if (currentSum > 0) {
+        rB = counts.biet;
+        rH = counts.hieu;
+        rV = counts.van_dung;
+      } else {
+        // Fallback to global ratio
+        const parts = inputData.knowledgeRatio.split('-').map(s => parseInt(s.trim()));
+        if (parts.length === 3 && !parts.some(isNaN)) {
+          [rB, rH, rV] = parts;
+        }
       }
+      
       const totalRatio = rB + rH + rV;
       
       const b = Math.round((newTotalItems * rB) / totalRatio);
@@ -614,68 +691,67 @@ const App: React.FC = () => {
     };
 
     return (
-      <div className="grid grid-cols-4 gap-4 items-start py-4 border-b border-slate-100 last:border-0">
-        <div className="pt-2">
-          <span className="text-sm font-semibold text-black block">Dạng II (Đúng/Sai)</span>
+      <div className="grid grid-cols-12 gap-4 items-center py-2 border-b border-slate-100 last:border-0">
+        <div className="col-span-3 flex flex-col">
+          <span className="text-sm font-semibold text-black">Dạng II (Đúng/Sai)</span>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-xs text-slate-500">Điểm:</span>
+            <input
+              type="number"
+              step="0.1"
+              className="w-16 p-1 border rounded bg-white text-center text-xs font-bold text-blue-600"
+              value={inputData.scores?.type2 || 0}
+              onChange={(e) => setInputData(prev => ({
+                ...prev,
+                scores: { ...prev.scores, type2: parseFloat(e.target.value) || 0 }
+              }))}
+            />
+          </div>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-xs text-black">Số câu:</span>
+            <input
+              type="number"
+              className="w-16 p-1 border rounded bg-white text-center text-xs"
+              value={count}
+              onChange={(e) => updateType2Count(parseInt(e.target.value) || 0)}
+            />
+          </div>
+          <span className="text-[10px] text-slate-500 mt-1">({count * 4} ý nhỏ)</span>
         </div>
-        <div className="col-span-3 space-y-4">
-          {/* Question Count */}
-          <div className="flex flex-col">
-            <span className="text-xs text-black mb-1">Số lượng câu hỏi (Mỗi câu 4 ý)</span>
-            <div className="flex items-center gap-4">
-              <input
-                type="number"
-                className="w-24 p-2 border rounded bg-white text-center text-sm"
-                value={count}
-                onChange={(e) => updateType2Count(Math.max(0, parseInt(e.target.value) || 0))}
-              />
-              <span className="text-sm font-medium text-black">
-                = <span className="text-primary font-bold">{totalItems}</span> ý nhỏ
-              </span>
-            </div>
-          </div>
-
-          {/* Level Distribution */}
-          <div className="bg-white p-3 rounded-lg border border-slate-100">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-xs font-semibold text-black">Phân bổ số ý (Tổng phải bằng {totalItems})</span>
-              {!isValid && <span className="text-xs text-red-500 font-bold">Hiện tại: {currentTotal} (Chênh lệch: {currentTotal - totalItems})</span>}
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="flex flex-col">
-                <span className="text-xs text-black mb-1">Biết</span>
-                <input
-                  type="number"
-                  className={`w-full p-2 border rounded text-center text-sm ${!isValid ? 'border-red-300 bg-red-50' : 'bg-white'}`}
-                  value={counts.biet}
-                  onChange={(e) => updateType2Level('biet', parseInt(e.target.value) || 0)}
-                />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs text-black mb-1">Hiểu</span>
-                <input
-                  type="number"
-                  className={`w-full p-2 border rounded text-center text-sm ${!isValid ? 'border-red-300 bg-red-50' : 'bg-white'}`}
-                  value={counts.hieu}
-                  onChange={(e) => updateType2Level('hieu', parseInt(e.target.value) || 0)}
-                />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs text-black mb-1">Vận dụng</span>
-                <input
-                  type="number"
-                  className={`w-full p-2 border rounded text-center text-sm ${!isValid ? 'border-red-300 bg-red-50' : 'bg-white'}`}
-                  value={counts.van_dung}
-                  onChange={(e) => updateType2Level('van_dung', parseInt(e.target.value) || 0)}
-                />
-              </div>
-            </div>
-          </div>
-          
-          {/* Suggestions */}
-          <div className="grid grid-cols-1">
-          </div>
+        
+        <div className="col-span-3 flex flex-col">
+          <span className="text-xs text-black mb-1">Biết (ý)</span>
+          <input
+            type="number"
+            className="w-full p-2 border rounded bg-white text-center text-sm"
+            value={counts.biet}
+            onChange={(e) => updateType2Level('biet', parseInt(e.target.value) || 0)}
+          />
         </div>
+        <div className="col-span-3 flex flex-col">
+          <span className="text-xs text-black mb-1">Hiểu (ý)</span>
+          <input
+            type="number"
+            className="w-full p-2 border rounded bg-white text-center text-sm"
+            value={counts.hieu}
+            onChange={(e) => updateType2Level('hieu', parseInt(e.target.value) || 0)}
+          />
+        </div>
+        <div className="col-span-3 flex flex-col">
+          <span className="text-xs text-black mb-1">Vận dụng (ý)</span>
+          <input
+            type="number"
+            className="w-full p-2 border rounded bg-white text-center text-sm"
+            value={counts.van_dung}
+            onChange={(e) => updateType2Level('van_dung', parseInt(e.target.value) || 0)}
+          />
+        </div>
+        
+        {!isValid && (
+          <div className="col-span-12 text-center text-xs text-red-500 font-bold">
+            Tổng số ý ({currentTotal}) chưa khớp với số câu hỏi ({totalItems}). Vui lòng điều chỉnh.
+          </div>
+        )}
       </div>
     );
   };
@@ -1005,10 +1081,16 @@ const App: React.FC = () => {
 
             {inputData.ratioMode === 'manual' && (
               <div className="bg-white p-4 rounded-lg border border-slate-200 space-y-4">
-                {inputData.enabledTypes.type1 && renderQuestionConfigRow("Dạng I (4 lựa chọn)", "type1", 8, 4, 0)}
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold uppercase text-slate-500">Cấu hình chi tiết & Điểm số</span>
+                  <span className={`text-xs font-bold ${Math.abs(((inputData.scores?.type1 || 0) * (inputData.enabledTypes.type1 ? 1 : 0)) + ((inputData.scores?.type2 || 0) * (inputData.enabledTypes.type2 ? 1 : 0)) + ((inputData.scores?.type3 || 0) * (inputData.enabledTypes.type3 ? 1 : 0)) + ((inputData.scores?.essay || 0) * (inputData.enabledTypes.essay ? 1 : 0)) - 10) < 0.1 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    Tổng điểm: {(((inputData.scores?.type1 || 0) * (inputData.enabledTypes.type1 ? 1 : 0)) + ((inputData.scores?.type2 || 0) * (inputData.enabledTypes.type2 ? 1 : 0)) + ((inputData.scores?.type3 || 0) * (inputData.enabledTypes.type3 ? 1 : 0)) + ((inputData.scores?.essay || 0) * (inputData.enabledTypes.essay ? 1 : 0))).toFixed(1)}/10
+                  </span>
+                </div>
+                {inputData.enabledTypes.type1 && renderQuestionConfigRow("Dạng I (4 lựa chọn)", "type1", 8, 4, 0, "type1")}
                 {inputData.enabledTypes.type2 && renderType2ConfigRow()}
-                {inputData.enabledTypes.type3 && renderQuestionConfigRow("Dạng III (Trả lời ngắn)", "type3", 1, 1, 2)}
-                {inputData.enabledTypes.essay && renderQuestionConfigRow("Tự luận", "essay", 0, 1, 2)}
+                {inputData.enabledTypes.type3 && renderQuestionConfigRow("Dạng III (Trả lời ngắn)", "type3", 1, 1, 2, "type3")}
+                {inputData.enabledTypes.essay && renderQuestionConfigRow("Tự luận", "essay", 0, 1, 2, "essay")}
                 
                 {!Object.values(inputData.enabledTypes).some(v => v) && (
                   <p className="text-center text-sm text-black py-4 italic">Vui lòng chọn ít nhất một dạng câu hỏi ở trên.</p>
@@ -1025,7 +1107,7 @@ const App: React.FC = () => {
             </h2>
             <div className="bg-white p-4 rounded-lg border border-slate-200">
               <p className="text-sm text-black mb-4">
-                Tải lên các tài liệu (PDF, DOCX, TXT) chứa nội dung kiến thức để làm cơ sở tạo câu hỏi. Hệ thống sẽ <strong>chỉ lấy dữ liệu từ các file này</strong> để sinh đề thi, tuyệt đối không suy diễn hay lấy từ nguồn bên ngoài.
+                Tải lên các tài liệu (PDF, DOCX, JPG, PNG) chứa nội dung kiến thức để làm cơ sở tạo câu hỏi. Hệ thống sẽ <strong>chỉ lấy dữ liệu từ các file này</strong> để sinh đề thi, tuyệt đối không suy diễn hay lấy từ nguồn bên ngoài. (Nếu không có tài liệu nào được tải lên thì cho phép hệ thống sưu tầm từ các nguồn dữ liệu bên ngoài)
               </p>
               
               <div className="flex flex-col gap-4">
@@ -1034,7 +1116,7 @@ const App: React.FC = () => {
                     type="file" 
                     ref={sourceMaterialInputRef} 
                     onChange={handleSourceMaterialUpload} 
-                    accept=".pdf,.docx,.txt" 
+                    accept=".pdf,.docx,.txt,.jpg,.jpeg,.png" 
                     multiple 
                     className="hidden" 
                     id="source-upload" 
@@ -1188,20 +1270,7 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-2 gap-6 pb-2">
-        {/* Editor Side */}
-        <div className={`flex flex-col h-full overflow-hidden ${themeClasses.card} p-0`}>
-          <div className="bg-white px-4 py-2 border-b border-slate-200 flex-shrink-0 flex justify-between items-center">
-            <label className="text-xs font-bold text-black uppercase tracking-wider">Source Code (HTML/Markdown)</label>
-          </div>
-          <textarea
-            className="flex-1 w-full p-4 font-mono text-xs sm:text-sm focus:outline-none resize-none leading-relaxed text-black bg-white"
-            value={content}
-            onChange={(e) => onUpdateContent(e.target.value)}
-            spellCheck={false}
-          />
-        </div>
-
+      <div className="flex-1 min-h-0 flex flex-col pb-2">
         {/* Preview Side */}
         <div className={`flex flex-col h-full overflow-hidden ${themeClasses.card} p-0`}>
           <div className="bg-white px-4 py-2 border-b border-teal-100 flex-shrink-0">
@@ -1246,7 +1315,13 @@ const App: React.FC = () => {
           type3: { biet: 1, hieu: 1, van_dung: 2 },
           essay: { biet: 0, hieu: 1, van_dung: 2 },
         },
-        sourceMaterials: []
+        sourceMaterials: [],
+        scores: {
+          type1: 3.0,
+          type2: 3.0,
+          type3: 1.0,
+          essay: 3.0,
+        }
       });
       setUploadedFileName(null);
       setCurrentStep(AppStep.INPUT);
@@ -1332,7 +1407,7 @@ const App: React.FC = () => {
               <div className="lg:hidden">
                 <h1 className="text-lg font-bold text-black leading-tight flex items-center gap-2 uppercase">
                   <FileSignature className="w-5 h-5 text-red-600" />
-                  Tiện ích DeKiemTra
+                  Tiện ích hỗ trợ soạn Đề kiểm tra
                 </h1>
                 <p className="text-[10px] text-black font-medium flex items-center gap-1 mt-0.5">
                   <ShieldCheck className="w-3 h-3 text-emerald-600" />
@@ -1344,7 +1419,7 @@ const App: React.FC = () => {
             <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex-col items-center">
               <h1 className="text-lg font-bold text-black leading-tight flex items-center gap-2 uppercase">
                 <FileSignature className="w-5 h-5 text-red-600" />
-                Tiện ích DeKiemTra
+                Tiện ích hỗ trợ soạn Đề kiểm tra
               </h1>
               <p className="text-[10px] text-black font-medium flex items-center gap-1 mt-0.5">
                 <ShieldCheck className="w-3 h-3 text-emerald-600" />
